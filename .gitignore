@@ -1,0 +1,72 @@
+# =========================================================
+# Employee Payment Management System
+# Root Git Ignore
+# =========================================================
+
+# -------------------------
+# Environment / Secrets
+# -------------------------
+.env
+.env.*
+!.env.example
+
+*.secret
+*.key
+*.pem
+
+# -------------------------
+# Database dumps / backups
+# -------------------------
+*.dump
+*.backup
+*.bak
+
+# -------------------------
+# PostgreSQL local data
+# -------------------------
+postgres-data/
+pgdata/
+
+# -------------------------
+# Java / Maven build output
+# -------------------------
+**/target/
+
+# -------------------------
+# Frontend dependencies/build
+# -------------------------
+**/node_modules/
+**/dist/
+**/.vite/
+
+# -------------------------
+# Logs
+# -------------------------
+*.log
+logs/
+
+# -------------------------
+# IDE
+# -------------------------
+.idea/
+*.iml
+*.ipr
+*.iws
+
+.vscode/
+!.vscode/extensions.json
+
+# -------------------------
+# OS
+# -------------------------
+.DS_Store
+Thumbs.db
+desktop.ini
+
+# -------------------------
+# Temporary files
+# -------------------------
+*.tmp
+*.temp
+*.swp
+*.swo

@@ -1,0 +1,2 @@
+ALTER TABLE payments
+    ALTER COLUMN created_by DROP NOT NULL;

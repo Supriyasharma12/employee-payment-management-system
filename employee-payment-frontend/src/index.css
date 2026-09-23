@@ -1,0 +1,199 @@
+@import "tailwindcss";
+
+/* =========================================================
+   Employee Payment Management System
+   Global UI Foundation
+   ========================================================= */
+
+:root {
+    font-family:
+            Inter,
+            ui-sans-serif,
+            system-ui,
+            -apple-system,
+            BlinkMacSystemFont,
+            "Segoe UI",
+            sans-serif;
+
+    font-synthesis: none;
+    text-rendering: optimizeLegibility;
+    -webkit-font-smoothing: antialiased;
+    -moz-osx-font-smoothing: grayscale;
+}
+
+html {
+    min-width: 320px;
+    background: #f8fafc;
+}
+
+body {
+    min-width: 320px;
+    min-height: 100vh;
+    margin: 0;
+    background: #f8fafc;
+    color: #0f172a;
+}
+
+/* ---------------------------------------------------------
+   Selection
+   --------------------------------------------------------- */
+
+::selection {
+    background: #dbeafe;
+    color: #0f172a;
+}
+
+/* ---------------------------------------------------------
+   Scrollbars
+   --------------------------------------------------------- */
+
+* {
+    scrollbar-width: thin;
+    scrollbar-color: #cbd5e1 transparent;
+}
+
+*::-webkit-scrollbar {
+    width: 8px;
+    height: 8px;
+}
+
+*::-webkit-scrollbar-track {
+    background: transparent;
+}
+
+*::-webkit-scrollbar-thumb {
+    background: #cbd5e1;
+    border-radius: 999px;
+}
+
+*::-webkit-scrollbar-thumb:hover {
+    background: #94a3b8;
+}
+
+/* ---------------------------------------------------------
+   Form controls
+   --------------------------------------------------------- */
+
+input,
+select,
+textarea,
+button {
+    font: inherit;
+}
+
+input::placeholder,
+textarea::placeholder {
+    color: #94a3b8;
+}
+
+input,
+select,
+textarea {
+    transition:
+            border-color 150ms ease,
+            box-shadow 150ms ease,
+            background-color 150ms ease;
+}
+
+input:focus,
+select:focus,
+textarea:focus {
+    outline: none;
+}
+
+/* ---------------------------------------------------------
+   Buttons
+   --------------------------------------------------------- */
+
+button {
+    transition:
+            background-color 150ms ease,
+            border-color 150ms ease,
+            color 150ms ease,
+            box-shadow 150ms ease,
+            transform 100ms ease;
+}
+
+button:active:not(:disabled) {
+    transform: translateY(1px);
+}
+
+button:disabled {
+    cursor: not-allowed;
+}
+
+/* ---------------------------------------------------------
+   Tables
+   --------------------------------------------------------- */
+
+table {
+    border-collapse: separate;
+    border-spacing: 0;
+}
+
+thead th {
+    font-weight: 600;
+}
+
+tbody tr {
+    transition: background-color 120ms ease;
+}
+
+/* ---------------------------------------------------------
+   Links
+   --------------------------------------------------------- */
+
+a {
+    color: inherit;
+    text-decoration: none;
+}
+
+/* ---------------------------------------------------------
+   Accessibility
+   --------------------------------------------------------- */
+
+:focus-visible {
+    outline: 2px solid #2563eb;
+    outline-offset: 2px;
+}
+
+/* ---------------------------------------------------------
+   Page animations
+   Keep them subtle — enterprise UI should feel stable.
+   --------------------------------------------------------- */
+
+@keyframes fade-in {
+    from {
+        opacity: 0;
+    }
+
+    to {
+        opacity: 1;
+    }
+}
+
+.animate-fade-in {
+    animation: fade-in 180ms ease-out;
+}
+
+/* ---------------------------------------------------------
+   Utility for smooth content transitions
+   --------------------------------------------------------- */
+
+.ui-transition {
+    transition:
+            opacity 180ms ease,
+            transform 180ms ease,
+            background-color 180ms ease,
+            border-color 180ms ease;
+}
+
+/* ---------------------------------------------------------
+   Mobile
+   --------------------------------------------------------- */
+
+@media (max-width: 640px) {
+    html {
+        font-size: 15px;
+    }
+}
