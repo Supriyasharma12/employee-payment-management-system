@@ -93,7 +93,7 @@ Negative net payments cannot be saved, updated, or approved.
 
 The payment lifecycle is:
 
-```text
+
 PENDING
    ↓
 DRAFT
@@ -171,7 +171,7 @@ Audit logs can be searched and filtered.
 
 ## Project Structure
 
-```text
+
 employee-payment-system/
 │
 ├── employee-payment-backend/
