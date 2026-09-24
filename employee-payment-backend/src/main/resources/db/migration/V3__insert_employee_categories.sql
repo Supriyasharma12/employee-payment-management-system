@@ -1,7 +1,2 @@
-INSERT INTO employee_categories (name, active)
-VALUES
-    ('Regular', TRUE),
-    ('Contract', TRUE),
-    ('Sudha Mitra', TRUE),
-    ('Dairy Man', TRUE),
-    ('Anukampa', TRUE);
+-- Employee categories are already inserted in V2.
+-- This migration is intentionally kept for Flyway history.
