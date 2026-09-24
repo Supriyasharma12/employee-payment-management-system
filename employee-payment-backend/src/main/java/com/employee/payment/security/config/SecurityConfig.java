@@ -46,15 +46,33 @@ public class SecurityConfig {
                 )
 
                 .authorizeHttpRequests(auth -> auth
+
+                        /*
+                         * Login is public.
+                         */
                         .requestMatchers(
                                 "/api/auth/login"
                         ).permitAll()
 
+                        /*
+                         * Browser CORS preflight.
+                         */
                         .requestMatchers(
                                 HttpMethod.OPTIONS,
                                 "/**"
                         ).permitAll()
 
+                        /*
+                         * Administrator management is restricted
+                         * to SYSTEM_ADMIN.
+                         */
+                        .requestMatchers(
+                                "/api/admins/**"
+                        ).hasRole("SYSTEM_ADMIN")
+
+                        /*
+                         * Everything else requires a valid login.
+                         */
                         .anyRequest().authenticated()
                 )
 

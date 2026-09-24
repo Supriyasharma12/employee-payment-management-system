@@ -17,6 +17,9 @@ import java.util.regex.Pattern;
 @Service
 public class AdminService {
 
+    private static final String SYSTEM_ADMIN_ROLE = "SYSTEM_ADMIN";
+    private static final String ADMIN_ROLE = "ADMIN";
+
     private static final Pattern PASSWORD_PATTERN =
             Pattern.compile(
                     "^(?=.*[a-z])(?=.*[A-Z])(?=.*\\d)(?=.*[^A-Za-z\\d]).{8,}$"
@@ -29,26 +32,30 @@ public class AdminService {
     public AdminService(
             AdminRepository adminRepository,
             PasswordEncoder passwordEncoder,
-            AuditLogService auditLogService
-    ) {
+            AuditLogService auditLogService) {
+
         this.adminRepository = adminRepository;
         this.passwordEncoder = passwordEncoder;
         this.auditLogService = auditLogService;
     }
 
     @Transactional
-    public AdminResponse createAdmin(
-            AdminCreateRequest request
-    ) {
+    public AdminResponse createAdmin(AdminCreateRequest request) {
 
-        validatePassword(request.password());
+        Admin currentAdmin = requireSystemAdmin();
+
+        if (!PASSWORD_PATTERN.matcher(request.password()).matches()) {
+            throw new IllegalArgumentException(
+                    "Password must contain at least 8 characters, " +
+                            "including uppercase, lowercase, digit and special character"
+            );
+        }
 
         if (adminRepository.existsByUsernameIgnoreCase(
-                request.username()
-        )) {
+                request.username())) {
+
             throw new IllegalArgumentException(
-                    "Username already exists: "
-                            + request.username()
+                    "Username already exists"
             );
         }
 
@@ -58,31 +65,26 @@ public class AdminService {
         admin.setUsername(request.username());
 
         admin.setPasswordHash(
-                passwordEncoder.encode(
-                        request.password()
-                )
+                passwordEncoder.encode(request.password())
         );
 
-        String role = request.role();
-
-        if (role == null || role.isBlank()) {
-            role = "ADMIN";
-        }
-
-        admin.setRole(
-                role.toUpperCase()
-        );
-
+        /*
+         * New administrators are always normal ADMIN users.
+         *
+         * SYSTEM_ADMIN access is intentionally not assignable
+         * through the normal admin-creation API.
+         */
+        admin.setRole(ADMIN_ROLE);
         admin.setActive(true);
 
-        Admin savedAdmin =
-                adminRepository.save(admin);
+        Admin savedAdmin = adminRepository.save(admin);
 
-        auditLogService.log(
+        auditLogService.logForAdmin(
+                currentAdmin,
                 "CREATE",
                 "ADMIN",
                 savedAdmin.getId(),
-                "Administrator created: "
+                "Created administrator: "
                         + savedAdmin.getUsername()
         );
 
@@ -92,6 +94,8 @@ public class AdminService {
     @Transactional(readOnly = true)
     public List<AdminResponse> getAllAdmins() {
 
+        requireSystemAdmin();
+
         return adminRepository.findAll()
                 .stream()
                 .map(this::toResponse)
@@ -99,147 +103,140 @@ public class AdminService {
     }
 
     @Transactional
-    public AdminResponse activateAdmin(
-            Long id
-    ) {
+    public AdminResponse activateAdmin(Long id) {
 
-        Admin admin =
-                adminRepository.findById(id)
-                        .orElseThrow(() ->
-                                new IllegalArgumentException(
-                                        "Admin not found with id: "
-                                                + id
-                                )
-                        );
+        Admin currentAdmin = requireSystemAdmin();
 
-        if (!admin.getActive()) {
+        Admin admin = adminRepository.findById(id)
+                .orElseThrow(() ->
+                        new IllegalArgumentException(
+                                "Admin not found"
+                        )
+                );
 
-            admin.setActive(true);
-
-            Admin savedAdmin =
-                    adminRepository.save(admin);
-
-            auditLogService.log(
-                    "ACTIVATE",
-                    "ADMIN",
-                    savedAdmin.getId(),
-                    "Administrator activated: "
-                            + savedAdmin.getUsername()
-            );
-
-            return toResponse(savedAdmin);
-        }
-
-        return toResponse(admin);
-    }
-
-    @Transactional
-    public AdminResponse deactivateAdmin(
-            Long id
-    ) {
-
-        Admin admin =
-                adminRepository.findById(id)
-                        .orElseThrow(() ->
-                                new IllegalArgumentException(
-                                        "Admin not found with id: "
-                                                + id
-                                )
-                        );
-
-        /*
-         * Only an active administrator can be deactivated.
-         */
-        if (!admin.getActive()) {
-            return toResponse(admin);
-        }
-
-        /*
-         * Prevent an administrator from deactivating
-         * their own currently logged-in account.
-         */
-        Authentication authentication =
-                SecurityContextHolder
-                        .getContext()
-                        .getAuthentication();
-
-        if (authentication != null
-                && authentication.isAuthenticated()
-                && authentication.getName() != null
-                && authentication.getName()
-                .equalsIgnoreCase(
-                        admin.getUsername()
-                )) {
-
-            throw new IllegalStateException(
-                    "You cannot deactivate your own administrator account"
+        if (SYSTEM_ADMIN_ROLE.equals(admin.getRole())) {
+            throw new IllegalArgumentException(
+                    "The system administrator account cannot be activated or deactivated"
             );
         }
 
-        /*
-         * Never allow the system to have zero active
-         * administrators.
-         */
-        long activeAdminCount =
-                adminRepository.countByActiveTrue();
+        admin.setActive(true);
 
-        if (activeAdminCount <= 1) {
+        Admin savedAdmin = adminRepository.save(admin);
 
-            throw new IllegalStateException(
-                    "At least one active administrator must remain in the system"
-            );
-        }
-
-        admin.setActive(false);
-
-        Admin savedAdmin =
-                adminRepository.save(admin);
-
-        auditLogService.log(
-                "DEACTIVATE",
+        auditLogService.logForAdmin(
+                currentAdmin,
+                "ACTIVATE",
                 "ADMIN",
                 savedAdmin.getId(),
-                "Administrator deactivated: "
+                "Activated administrator: "
                         + savedAdmin.getUsername()
         );
 
         return toResponse(savedAdmin);
     }
 
-    /**
-     * Validates administrator password strength.
-     *
-     * Requirements:
-     * - At least 8 characters
-     * - At least one lowercase letter
-     * - At least one uppercase letter
-     * - At least one number
-     * - At least one special character
-     */
-    private void validatePassword(
-            String password
-    ) {
+    @Transactional
+    public AdminResponse deactivateAdmin(Long id) {
 
-        if (password == null || password.isBlank()) {
+        Admin currentAdmin = requireSystemAdmin();
 
+        Admin admin = adminRepository.findById(id)
+                .orElseThrow(() ->
+                        new IllegalArgumentException(
+                                "Admin not found"
+                        )
+                );
+
+        /*
+         * The SYSTEM_ADMIN account is protected.
+         */
+        if (SYSTEM_ADMIN_ROLE.equals(admin.getRole())) {
             throw new IllegalArgumentException(
-                    "Password is required"
+                    "The system administrator account cannot be activated or deactivated"
             );
         }
 
-        if (!PASSWORD_PATTERN.matcher(password).matches()) {
-
+        /*
+         * Prevent the currently logged-in administrator
+         * from disabling their own account.
+         */
+        if (admin.getId().equals(currentAdmin.getId())) {
             throw new IllegalArgumentException(
-                    "Password must be at least 8 characters long and contain "
-                            + "at least one uppercase letter, one lowercase letter, "
-                            + "one number, and one special character"
+                    "You cannot deactivate your own account"
             );
         }
+
+        /*
+         * Always keep at least one active administrator.
+         */
+        long activeAdminCount =
+                adminRepository.countByActiveTrue();
+
+        if (activeAdminCount <= 1) {
+            throw new IllegalArgumentException(
+                    "At least one active administrator must remain"
+            );
+        }
+
+        admin.setActive(false);
+
+        Admin savedAdmin = adminRepository.save(admin);
+
+        auditLogService.logForAdmin(
+                currentAdmin,
+                "DEACTIVATE",
+                "ADMIN",
+                savedAdmin.getId(),
+                "Deactivated administrator: "
+                        + savedAdmin.getUsername()
+        );
+
+        return toResponse(savedAdmin);
     }
 
-    private AdminResponse toResponse(
-            Admin admin
-    ) {
+    private Admin requireSystemAdmin() {
+
+        Authentication authentication =
+                SecurityContextHolder
+                        .getContext()
+                        .getAuthentication();
+
+        if (authentication == null ||
+                !authentication.isAuthenticated()) {
+
+            throw new IllegalStateException(
+                    "Authentication required"
+            );
+        }
+
+        boolean isSystemAdmin =
+                authentication.getAuthorities()
+                        .stream()
+                        .anyMatch(authority ->
+                                "ROLE_SYSTEM_ADMIN".equals(
+                                        authority.getAuthority()
+                                )
+                        );
+
+        if (!isSystemAdmin) {
+            throw new SecurityException(
+                    "Only the system administrator can manage administrators"
+            );
+        }
+
+        String username = authentication.getName();
+
+        return adminRepository
+                .findByUsernameIgnoreCase(username)
+                .orElseThrow(() ->
+                        new IllegalStateException(
+                                "Authenticated administrator not found"
+                        )
+                );
+    }
+
+    private AdminResponse toResponse(Admin admin) {
 
         return new AdminResponse(
                 admin.getId(),

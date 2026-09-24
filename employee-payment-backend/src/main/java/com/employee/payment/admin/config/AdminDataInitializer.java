@@ -1,4 +1,4 @@
-package com.employee.payment.admin.config;
+package com.employee.payment.admin.initializer;
 
 import com.employee.payment.admin.entity.Admin;
 import com.employee.payment.admin.repository.AdminRepository;
@@ -31,18 +31,20 @@ public class AdminDataInitializer implements CommandLineRunner {
 
         admin.setName("System Administrator");
         admin.setUsername("admin");
+
+        /*
+         * Initial administrator account.
+         *
+         * The password should be changed after first login.
+         * Do not print credentials to application logs.
+         */
         admin.setPasswordHash(
                 passwordEncoder.encode("Admin@123")
         );
-        admin.setRole("ADMIN");
+
+        admin.setRole("SYSTEM_ADMIN");
         admin.setActive(true);
 
         adminRepository.save(admin);
-
-        System.out.println("======================================");
-        System.out.println("Default admin created");
-        System.out.println("Username: admin");
-        System.out.println("Password: Admin@123");
-        System.out.println("======================================");
     }
 }

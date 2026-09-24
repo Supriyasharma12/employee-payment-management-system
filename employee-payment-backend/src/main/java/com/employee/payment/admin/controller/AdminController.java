@@ -39,6 +39,7 @@ public class AdminController {
                 adminService.getAllAdmins()
         );
     }
+
     @PatchMapping("/{id}/activate")
     public ResponseEntity<AdminResponse> activateAdmin(
             @PathVariable Long id) {

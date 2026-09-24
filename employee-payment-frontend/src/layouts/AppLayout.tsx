@@ -67,11 +67,13 @@ const administrationItems = [
         title: "Admin Management",
         url: "/admins",
         icon: ShieldCheck,
+        systemAdminOnly: true,
     },
     {
         title: "Audit Logs",
         url: "/audit-logs",
         icon: ScrollText,
+        systemAdminOnly: false,
     },
 ]
 
@@ -88,10 +90,25 @@ export default function AppLayout({
         sessionStorage.getItem("adminRole") ||
         "ADMIN"
 
+    /*
+     * SYSTEM_ADMIN is the only role that can manage
+     * administrator accounts.
+     *
+     * Backend authorization remains the final security layer.
+     */
+    const visibleAdministrationItems =
+        administrationItems.filter(
+            (item) =>
+                !item.systemAdminOnly ||
+                adminRole === "SYSTEM_ADMIN",
+        )
+
     const currentItem = [
         ...mainNavigationItems,
-        ...administrationItems,
-    ].find((item) => location.pathname === item.url)
+        ...visibleAdministrationItems,
+    ].find(
+        (item) => location.pathname === item.url,
+    )
 
     const currentPageTitle =
         currentItem?.title ||
@@ -106,7 +123,9 @@ export default function AppLayout({
         const words = name.trim().split(/\s+/)
 
         if (words.length === 1) {
-            return words[0].slice(0, 2).toUpperCase()
+            return words[0]
+                .slice(0, 2)
+                .toUpperCase()
         }
 
         return (
@@ -114,6 +133,11 @@ export default function AppLayout({
             words[words.length - 1][0]
         ).toUpperCase()
     }
+
+    const displayRole =
+        adminRole === "SYSTEM_ADMIN"
+            ? "SYSTEM ADMIN"
+            : "ADMIN"
 
     return (
         <SidebarProvider>
@@ -130,7 +154,9 @@ export default function AppLayout({
                 >
 
                     {/* Brand */}
+
                     <SidebarHeader className="border-b border-slate-100">
+
                         <div className="flex items-center gap-3 px-3 py-4">
 
                             <div className="flex h-10 w-10 shrink-0 items-center justify-center rounded-xl bg-primary text-primary-foreground shadow-sm">
@@ -138,6 +164,7 @@ export default function AppLayout({
                             </div>
 
                             <div className="min-w-0 group-data-[collapsible=icon]:hidden">
+
                                 <p className="truncate text-sm font-bold tracking-tight text-slate-900">
                                     Employee Payment
                                 </p>
@@ -145,125 +172,173 @@ export default function AppLayout({
                                 <p className="truncate text-xs text-slate-500">
                                     Management System
                                 </p>
+
                             </div>
 
                         </div>
+
                     </SidebarHeader>
 
+
                     {/* Navigation */}
+
                     <SidebarContent className="px-2 py-4">
 
                         {/* Main modules */}
+
                         <SidebarGroup>
+
                             <SidebarGroupLabel className="px-3 pb-2 text-[11px] font-semibold uppercase tracking-wider text-slate-400 group-data-[collapsible=icon]:hidden">
                                 Main Modules
                             </SidebarGroupLabel>
 
                             <SidebarGroupContent>
+
                                 <SidebarMenu>
 
-                                    {mainNavigationItems.map((item) => (
-                                        <SidebarMenuItem
-                                            key={item.url}
-                                        >
-                                            <NavLink
-                                                to={item.url}
-                                                className="block"
+                                    {mainNavigationItems.map(
+                                        (item) => (
+                                            <SidebarMenuItem
+                                                key={item.url}
                                             >
-                                                {({ isActive }) => (
-                                                    <SidebarMenuButton
-                                                        isActive={isActive}
-                                                        tooltip={item.title}
-                                                        className={`
-                                                            h-10 rounded-lg px-3
-                                                            transition-all duration-150
-                                                            ${
-                                                            isActive
-                                                                ? "bg-primary/10 text-primary font-semibold shadow-sm hover:bg-primary/15"
-                                                                : "text-slate-600 hover:bg-slate-100 hover:text-slate-900"
-                                                        }
-                                                        `}
-                                                    >
-                                                        <item.icon
+
+                                                <NavLink
+                                                    to={item.url}
+                                                    className="block"
+                                                >
+
+                                                    {({
+                                                          isActive,
+                                                      }) => (
+                                                        <SidebarMenuButton
+                                                            isActive={
+                                                                isActive
+                                                            }
+                                                            tooltip={
+                                                                item.title
+                                                            }
                                                             className={`
-                                                                h-[18px] w-[18px]
+                                                                h-10 rounded-lg px-3
+                                                                transition-all duration-150
                                                                 ${
                                                                 isActive
-                                                                    ? "text-primary"
-                                                                    : "text-slate-500"
+                                                                    ? "bg-primary/10 text-primary font-semibold shadow-sm hover:bg-primary/15"
+                                                                    : "text-slate-600 hover:bg-slate-100 hover:text-slate-900"
                                                             }
                                                             `}
-                                                        />
+                                                        >
 
-                                                        <span>
-                                                            {item.title}
-                                                        </span>
-                                                    </SidebarMenuButton>
-                                                )}
-                                            </NavLink>
-                                        </SidebarMenuItem>
-                                    ))}
+                                                            <item.icon
+                                                                className={`
+                                                                    h-[18px] w-[18px]
+                                                                    ${
+                                                                    isActive
+                                                                        ? "text-primary"
+                                                                        : "text-slate-500"
+                                                                }
+                                                                `}
+                                                            />
+
+                                                            <span>
+                                                                {
+                                                                    item.title
+                                                                }
+                                                            </span>
+
+                                                        </SidebarMenuButton>
+                                                    )}
+
+                                                </NavLink>
+
+                                            </SidebarMenuItem>
+                                        ),
+                                    )}
 
                                 </SidebarMenu>
+
                             </SidebarGroupContent>
+
                         </SidebarGroup>
 
+
                         {/* Administration */}
+
                         <SidebarGroup className="mt-6">
+
                             <SidebarGroupLabel className="px-3 pb-2 text-[11px] font-semibold uppercase tracking-wider text-slate-400 group-data-[collapsible=icon]:hidden">
                                 Administration
                             </SidebarGroupLabel>
 
                             <SidebarGroupContent>
+
                                 <SidebarMenu>
 
-                                    {administrationItems.map((item) => (
-                                        <SidebarMenuItem
-                                            key={item.url}
-                                        >
-                                            <NavLink
-                                                to={item.url}
-                                                className="block"
+                                    {visibleAdministrationItems.map(
+                                        (item) => (
+                                            <SidebarMenuItem
+                                                key={item.url}
                                             >
-                                                {({ isActive }) => (
-                                                    <SidebarMenuButton
-                                                        isActive={isActive}
-                                                        tooltip={item.title}
-                                                        className={`
-                                                            h-10 rounded-lg px-3
-                                                            transition-all duration-150
-                                                            ${
-                                                            isActive
-                                                                ? "bg-primary/10 text-primary font-semibold shadow-sm hover:bg-primary/15"
-                                                                : "text-slate-600 hover:bg-slate-100 hover:text-slate-900"
-                                                        }
-                                                        `}
-                                                    >
-                                                        <item.icon
+
+                                                <NavLink
+                                                    to={item.url}
+                                                    className="block"
+                                                >
+
+                                                    {({
+                                                          isActive,
+                                                      }) => (
+                                                        <SidebarMenuButton
+                                                            isActive={
+                                                                isActive
+                                                            }
+                                                            tooltip={
+                                                                item.title
+                                                            }
                                                             className={`
-                                                                h-[18px] w-[18px]
+                                                                h-10 rounded-lg px-3
+                                                                transition-all duration-150
                                                                 ${
                                                                 isActive
-                                                                    ? "text-primary"
-                                                                    : "text-slate-500"
+                                                                    ? "bg-primary/10 text-primary font-semibold shadow-sm hover:bg-primary/15"
+                                                                    : "text-slate-600 hover:bg-slate-100 hover:text-slate-900"
                                                             }
                                                             `}
-                                                        />
+                                                        >
 
-                                                        <span>
-                                                            {item.title}
-                                                        </span>
-                                                    </SidebarMenuButton>
-                                                )}
-                                            </NavLink>
-                                        </SidebarMenuItem>
-                                    ))}
+                                                            <item.icon
+                                                                className={`
+                                                                    h-[18px] w-[18px]
+                                                                    ${
+                                                                    isActive
+                                                                        ? "text-primary"
+                                                                        : "text-slate-500"
+                                                                }
+                                                                `}
+                                                            />
+
+                                                            <span>
+                                                                {
+                                                                    item.title
+                                                                }
+                                                            </span>
+
+                                                        </SidebarMenuButton>
+                                                    )}
+
+                                                </NavLink>
+
+                                            </SidebarMenuItem>
+                                        ),
+                                    )}
 
                                 </SidebarMenu>
+
                             </SidebarGroupContent>
+
                         </SidebarGroup>
 
                     </SidebarContent>
+
 
                     {/* =================================================
                         ADMINISTRATOR AREA
@@ -280,13 +355,15 @@ export default function AppLayout({
                                 </div>
 
                                 <div className="min-w-0 group-data-[collapsible=icon]:hidden">
+
                                     <p className="truncate text-sm font-semibold text-slate-800">
                                         {adminName}
                                     </p>
 
                                     <p className="mt-0.5 text-[11px] font-medium uppercase tracking-wide text-slate-400">
-                                        {adminRole}
+                                        {displayRole}
                                     </p>
+
                                 </div>
 
                             </div>
@@ -297,11 +374,13 @@ export default function AppLayout({
                                 className="mt-1 h-9 w-full justify-start rounded-lg px-2 text-slate-600 hover:bg-white hover:text-slate-900 group-data-[collapsible=icon]:justify-center"
                                 onClick={handleLogout}
                             >
+
                                 <LogOut className="h-4 w-4 shrink-0" />
 
                                 <span className="ml-2 group-data-[collapsible=icon]:hidden">
                                     Logout
                                 </span>
+
                             </Button>
 
                         </div>
@@ -310,6 +389,7 @@ export default function AppLayout({
 
                 </Sidebar>
 
+
                 {/* =====================================================
                     MAIN APPLICATION AREA
                    ===================================================== */}
@@ -317,6 +397,7 @@ export default function AppLayout({
                 <div className="flex min-w-0 flex-1 flex-col">
 
                     {/* Top Header */}
+
                     <header className="sticky top-0 z-30 flex h-16 shrink-0 items-center justify-between border-b border-slate-200 bg-white/95 px-4 backdrop-blur md:px-6">
 
                         <div className="flex min-w-0 items-center gap-3">
@@ -332,6 +413,7 @@ export default function AppLayout({
                             <div className="min-w-0">
 
                                 <div className="flex items-center gap-1.5 text-xs text-slate-400">
+
                                     <span className="hidden sm:inline">
                                         Administration Portal
                                     </span>
@@ -341,6 +423,7 @@ export default function AppLayout({
                                     <span className="truncate text-slate-600">
                                         {currentPageTitle}
                                     </span>
+
                                 </div>
 
                                 <h1 className="truncate text-sm font-semibold text-slate-900 sm:text-base">
@@ -351,17 +434,21 @@ export default function AppLayout({
 
                         </div>
 
+
                         {/* Header administrator */}
+
                         <div className="flex items-center gap-3">
 
                             <div className="hidden text-right md:block">
+
                                 <p className="text-sm font-medium text-slate-800">
                                     {adminName}
                                 </p>
 
                                 <p className="text-[11px] uppercase tracking-wide text-slate-400">
-                                    {adminRole}
+                                    {displayRole}
                                 </p>
+
                             </div>
 
                             <div className="flex h-9 w-9 items-center justify-center rounded-full bg-primary/10 text-xs font-bold text-primary">
@@ -372,7 +459,9 @@ export default function AppLayout({
 
                     </header>
 
+
                     {/* Page Content */}
+
                     <main className="min-h-[calc(100vh-4rem)] flex-1 bg-slate-50 p-4 md:p-6 lg:p-7">
 
                         <div className="mx-auto w-full max-w-[1600px] animate-fade-in">
