@@ -2,6 +2,7 @@ package com.employee.payment.security.config;
 
 import com.employee.payment.auth.service.JwtAuthenticationFilter;
 import com.employee.payment.security.handler.CustomAuthenticationEntryPoint;
+
 import org.springframework.context.annotation.Bean;
 import org.springframework.context.annotation.Configuration;
 import org.springframework.http.HttpMethod;
@@ -63,8 +64,21 @@ public class SecurityConfig {
                         ).permitAll()
 
                         /*
-                         * Administrator management is restricted
-                         * to SYSTEM_ADMIN.
+                         * Authenticated administrators may READ
+                         * administrator information.
+                         *
+                         * This is required by Audit Logs so that
+                         * the Administrator filter can be populated.
+                         */
+                        .requestMatchers(
+                                HttpMethod.GET,
+                                "/api/admins"
+                        ).authenticated()
+
+                        /*
+                         * Creating, activating, deactivating,
+                         * or otherwise managing administrators
+                         * is restricted to SYSTEM_ADMIN.
                          */
                         .requestMatchers(
                                 "/api/admins/**"
