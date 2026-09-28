@@ -5,6 +5,9 @@ import jakarta.servlet.ServletException;
 import jakarta.servlet.http.HttpServletRequest;
 import jakarta.servlet.http.HttpServletResponse;
 
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
+
 import org.springframework.security.authentication.UsernamePasswordAuthenticationToken;
 import org.springframework.security.core.context.SecurityContextHolder;
 import org.springframework.security.core.userdetails.UserDetails;
@@ -17,6 +20,9 @@ import java.io.IOException;
 
 @Component
 public class JwtAuthenticationFilter extends OncePerRequestFilter {
+
+    private static final Logger logger =
+            LoggerFactory.getLogger(JwtAuthenticationFilter.class);
 
     private final JwtService jwtService;
     private final UserDetailsService userDetailsService;
@@ -57,6 +63,13 @@ public class JwtAuthenticationFilter extends OncePerRequestFilter {
             String username =
                     jwtService.extractUsername(jwtToken);
 
+            logger.info(
+                    "JWT username extracted: {} for {} {}",
+                    username,
+                    request.getMethod(),
+                    request.getRequestURI()
+            );
+
             // Authenticate only if no authentication
             // already exists
             if (username != null &&
@@ -67,6 +80,12 @@ public class JwtAuthenticationFilter extends OncePerRequestFilter {
                 UserDetails userDetails =
                         userDetailsService
                                 .loadUserByUsername(username);
+
+                logger.info(
+                        "User loaded successfully: {} with authorities: {}",
+                        userDetails.getUsername(),
+                        userDetails.getAuthorities()
+                );
 
                 // Validate token
                 if (jwtService.isTokenValid(
@@ -88,15 +107,37 @@ public class JwtAuthenticationFilter extends OncePerRequestFilter {
                     SecurityContextHolder
                             .getContext()
                             .setAuthentication(authentication);
+
+                    logger.info(
+                            "JWT authentication successful for user: {}",
+                            username
+                    );
+
+                } else {
+
+                    logger.warn(
+                            "JWT validation returned false for user: {}",
+                            username
+                    );
                 }
             }
 
         } catch (Exception ex) {
 
-            // Invalid/expired JWT.
-            // Do not authenticate the request.
-            SecurityContextHolder
-                    .clearContext();
+            /*
+             * Do not expose the JWT itself in logs.
+             * Log only the exception so the actual
+             * authentication problem can be diagnosed.
+             */
+            logger.error(
+                    "JWT authentication failed for {} {}. Reason: {}",
+                    request.getMethod(),
+                    request.getRequestURI(),
+                    ex.getMessage(),
+                    ex
+            );
+
+            SecurityContextHolder.clearContext();
         }
 
         filterChain.doFilter(request, response);
