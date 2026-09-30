@@ -38,7 +38,10 @@ public class Employee {
     @Column(name = "account_number", nullable = false, length = 50)
     private String accountNumber;
 
-    @Column(name = "pan_number", nullable = false, length = 10)
+//    @Column(name = "pan_number", nullable = false, length = 10)
+//    private String panNumber;
+
+    @Column(name = "pan_number", length = 10)
     private String panNumber;
 
 //    @Column(name = "ifsc_code", nullable = false, length = 20)

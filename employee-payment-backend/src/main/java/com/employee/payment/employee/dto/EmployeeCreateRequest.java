@@ -23,9 +23,9 @@ public record EmployeeCreateRequest(
         @Size(max = 150, message = "Employee name cannot exceed 150 characters")
         String name,
 
-        @NotBlank(message = "PAN number is required")
+//        @NotBlank(message = "PAN number is required")
         @Pattern(
-                regexp = "^[A-Z]{5}[0-9]{4}[A-Z]$",
+                regexp = "^$|^[A-Z]{5}[0-9]{4}[A-Z]$",
                 message = "Please enter a valid PAN number"
         )
         String panNumber,

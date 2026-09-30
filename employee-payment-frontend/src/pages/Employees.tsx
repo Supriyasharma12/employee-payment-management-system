@@ -701,18 +701,18 @@ export default function Employees() {
         }
 
         // PAN NUMBER
-        if (!form.panNumber.trim()) {
-            errors.panNumber =
-                "PAN number is required."
-        } else if (
-            !/^[A-Z]{5}[0-9]{4}[A-Z]$/.test(
-                form.panNumber
-                    .trim()
-                    .toUpperCase(),
-            )
-        ) {
-            errors.panNumber =
-                "Enter a valid 10-character PAN number."
+        // PAN NUMBER - OPTIONAL
+        if (form.panNumber.trim()) {
+            if (
+                !/^[A-Z]{5}[0-9]{4}[A-Z]$/.test(
+                    form.panNumber
+                        .trim()
+                        .toUpperCase(),
+                )
+            ) {
+                errors.panNumber =
+                    "Enter a valid 10-character PAN number."
+            }
         }
 
         if (!form.categoryId) {
@@ -1217,7 +1217,7 @@ export default function Employees() {
 
                                         <FormField
                                             label="PAN Number"
-                                            required
+                                            // required
                                             error={fieldErrors.panNumber}
                                         >
                                             <Input
