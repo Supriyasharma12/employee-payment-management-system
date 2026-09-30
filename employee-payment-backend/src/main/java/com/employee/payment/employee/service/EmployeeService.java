@@ -69,8 +69,15 @@ public class EmployeeService {
 
         employee.setEmployeeCode(request.employeeCode().trim());
         employee.setName(request.name().trim());
+        employee.setPanNumber(request.panNumber().trim().toUpperCase());
         employee.setAccountNumber(request.accountNumber().trim());
-        employee.setIfscCode(request.ifscCode().trim().toUpperCase());
+
+        employee.setIfscCode(
+                request.ifscCode() != null
+                        ? request.ifscCode().trim().toUpperCase()
+                        : null
+        );
+
         employee.setPosition(request.position());
         employee.setPhoneNumber(request.phoneNumber());
         employee.setEmail(request.email());
@@ -180,8 +187,15 @@ public class EmployeeService {
         }
 
         employee.setName(request.name().trim());
+        employee.setPanNumber(request.panNumber().trim().toUpperCase());
         employee.setAccountNumber(request.accountNumber().trim());
-        employee.setIfscCode(request.ifscCode().trim().toUpperCase());
+
+        employee.setIfscCode(
+                request.ifscCode() != null
+                        ? request.ifscCode().trim().toUpperCase()
+                        : null
+        );
+
         employee.setPosition(request.position());
         employee.setPhoneNumber(request.phoneNumber());
         employee.setEmail(request.email());
@@ -272,6 +286,7 @@ public class EmployeeService {
                 employee.getId(),
                 employee.getEmployeeCode(),
                 employee.getName(),
+                employee.getPanNumber(),
                 employee.getAccountNumber(),
                 employee.getIfscCode(),
                 employee.getPosition(),

@@ -9,6 +9,7 @@ public record PaymentSummaryResponse(
         Long employeeId,
         String employeeCode,
         String employeeName,
+        String panNumber,
 
         Integer month,
         Integer year,

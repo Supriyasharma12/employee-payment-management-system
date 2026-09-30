@@ -8,6 +8,7 @@ public record EmployeeResponse(
         Long id,
         String employeeCode,
         String name,
+        String panNumber,
         String accountNumber,
         String ifscCode,
         String position,

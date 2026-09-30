@@ -3,6 +3,7 @@ package com.employee.payment.employee.dto;
 import jakarta.validation.constraints.Email;
 import jakarta.validation.constraints.NotBlank;
 import jakarta.validation.constraints.NotNull;
+import jakarta.validation.constraints.Pattern;
 import jakarta.validation.constraints.PositiveOrZero;
 import jakarta.validation.constraints.Size;
 
@@ -14,11 +15,17 @@ public record EmployeeUpdateRequest(
         @Size(max = 150)
         String name,
 
+        @NotBlank(message = "PAN number is required")
+        @Pattern(
+                regexp = "^[A-Z]{5}[0-9]{4}[A-Z]$",
+                message = "Please enter a valid PAN number"
+        )
+        String panNumber,
+
         @NotBlank(message = "Account number is required")
         @Size(max = 50)
         String accountNumber,
 
-        @NotBlank(message = "IFSC code is required")
         @Size(max = 20)
         String ifscCode,
 

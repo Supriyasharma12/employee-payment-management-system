@@ -10,6 +10,9 @@ export interface PaymentAdvice {
     employeeCode: string
     employeeName: string
 
+    // PAN comes from Employee Master
+    panNumber: string
+
     bankName: string | null
     accountNumber: string
     ifscCode: string
@@ -30,12 +33,29 @@ export interface PaymentAdvice {
 
 export interface PaymentAdvicePage {
     content: PaymentAdvice[]
+
     totalElements: number
     totalPages: number
+
     number: number
     size: number
+
     first: boolean
     last: boolean
+}
+
+// ------------------------------------------
+// Filters
+// ------------------------------------------
+
+export interface PaymentAdviceFilters {
+    paymentPeriodId?: number
+    employeeId?: number
+    categoryId?: number
+    bankId?: number
+
+    employeeCode?: string
+    employeeName?: string
 }
 
 // ------------------------------------------
@@ -45,56 +65,81 @@ export interface PaymentAdvicePage {
 export const getPaymentAdvice = async (
     page = 0,
     size = 10,
-    filters?: {
-        paymentPeriodId?: number
-        employeeId?: number
-        categoryId?: number
-        bankId?: number
-        employeeCode?: string
-        employeeName?: string
-    },
+    filters?: PaymentAdviceFilters,
 ): Promise<PaymentAdvicePage> => {
+
     const params = new URLSearchParams()
 
-    params.set("page", String(page))
-    params.set("size", String(size))
+    params.set(
+        "page",
+        String(page),
+    )
 
-    if (filters?.paymentPeriodId) {
+    params.set(
+        "size",
+        String(size),
+    )
+
+    if (
+        filters?.paymentPeriodId !==
+        undefined
+    ) {
         params.set(
             "paymentPeriodId",
-            String(filters.paymentPeriodId),
+            String(
+                filters.paymentPeriodId,
+            ),
         )
     }
 
-    if (filters?.employeeId) {
+    if (
+        filters?.employeeId !==
+        undefined
+    ) {
         params.set(
             "employeeId",
-            String(filters.employeeId),
+            String(
+                filters.employeeId,
+            ),
         )
     }
 
-    if (filters?.categoryId) {
+    if (
+        filters?.categoryId !==
+        undefined
+    ) {
         params.set(
             "categoryId",
-            String(filters.categoryId),
+            String(
+                filters.categoryId,
+            ),
         )
     }
 
-    if (filters?.bankId) {
+    if (
+        filters?.bankId !==
+        undefined
+    ) {
         params.set(
             "bankId",
-            String(filters.bankId),
+            String(
+                filters.bankId,
+            ),
         )
     }
 
-    if (filters?.employeeCode?.trim()) {
+    if (
+        filters?.employeeCode?.trim()
+    ) {
         params.set(
             "employeeCode",
             filters.employeeCode.trim(),
         )
     }
 
-    if (filters?.employeeName?.trim()) {
+    if (
+        filters?.employeeName?.trim()
+    ) {
         params.set(
             "employeeName",
             filters.employeeName.trim(),
@@ -113,66 +158,87 @@ export const getPaymentAdvice = async (
 // Export Payment Advice
 // ------------------------------------------
 
-export const exportPaymentAdvice = async (
-    filters?: {
-        paymentPeriodId?: number
-        employeeId?: number
-        categoryId?: number
-        bankId?: number
-        employeeCode?: string
-        employeeName?: string
-    },
-): Promise<Blob> => {
-    const params = new URLSearchParams()
+export const exportPaymentAdvice =
+    async (
+        filters?: PaymentAdviceFilters,
+    ): Promise<Blob> => {
 
-    if (filters?.paymentPeriodId) {
-        params.set(
-            "paymentPeriodId",
-            String(filters.paymentPeriodId),
-        )
+        const params =
+            new URLSearchParams()
+
+        if (
+            filters?.paymentPeriodId !==
+            undefined
+        ) {
+            params.set(
+                "paymentPeriodId",
+                String(
+                    filters.paymentPeriodId,
+                ),
+            )
+        }
+
+        if (
+            filters?.employeeId !==
+            undefined
+        ) {
+            params.set(
+                "employeeId",
+                String(
+                    filters.employeeId,
+                ),
+            )
+        }
+
+        if (
+            filters?.categoryId !==
+            undefined
+        ) {
+            params.set(
+                "categoryId",
+                String(
+                    filters.categoryId,
+                ),
+            )
+        }
+
+        if (
+            filters?.bankId !==
+            undefined
+        ) {
+            params.set(
+                "bankId",
+                String(
+                    filters.bankId,
+                ),
+            )
+        }
+
+        if (
+            filters?.employeeCode?.trim()
+        ) {
+            params.set(
+                "employeeCode",
+                filters.employeeCode.trim(),
+            )
+        }
+
+        if (
+            filters?.employeeName?.trim()
+        ) {
+            params.set(
+                "employeeName",
+                filters.employeeName.trim(),
+            )
+        }
+
+        const response =
+            await apiClient.get(
+                `/payments/advice/export?${params.toString()}`,
+                {
+                    responseType: "blob",
+                },
+            )
+
+        return response.data
     }
-
-    if (filters?.employeeId) {
-        params.set(
-            "employeeId",
-            String(filters.employeeId),
-        )
-    }
-
-    if (filters?.categoryId) {
-        params.set(
-            "categoryId",
-            String(filters.categoryId),
-        )
-    }
-
-    if (filters?.bankId) {
-        params.set(
-            "bankId",
-            String(filters.bankId),
-        )
-    }
-
-    if (filters?.employeeCode?.trim()) {
-        params.set(
-            "employeeCode",
-            filters.employeeCode.trim(),
-        )
-    }
-
-    if (filters?.employeeName?.trim()) {
-        params.set(
-            "employeeName",
-            filters.employeeName.trim(),
-        )
-    }
-
-    const response = await apiClient.get(
-        `/payments/advice/export?${params.toString()}`,
-        {
-            responseType: "blob",
-        },
-    )
-
-    return response.data
-}

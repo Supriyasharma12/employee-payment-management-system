@@ -2,19 +2,32 @@ import { Printer } from "lucide-react"
 import { Button } from "@/components/ui/button"
 
 interface PrintButtonProps {
-    title?: string
+    title: string
 }
 
 export default function PrintButton({
                                         title = "Payment Summary",
                                     }: PrintButtonProps) {
-    const handlePrint = () => {
+    const handlePrint = (): void => {
+        // ---------------------------------------------------------
+        // Temporarily remove browser document title
+        // This prevents unwanted browser title information
+        // from appearing in the print header/footer.
+        // ---------------------------------------------------------
+
+        const originalDocumentTitle = document.title
+        document.title = ""
+
         const table = document.querySelector(
             "table",
         ) as HTMLTableElement | null
 
         if (!table) {
             alert("Payment records table could not be found.")
+
+            // Restore original document title
+            document.title = originalDocumentTitle
+
             return
         }
 
@@ -25,8 +38,35 @@ export default function PrintButton({
         const printContainer = document.createElement("div")
         printContainer.id = "payment-print-container"
 
+        // ---------------------------------------------------------
+        // PRINT TITLE + CURRENT DATE
+        // ---------------------------------------------------------
+
         const printTitle = document.createElement("h1")
-        printTitle.textContent = title
+
+        const currentDate = new Date().toLocaleDateString("en-GB")
+
+        printTitle.style.display = "flex"
+        printTitle.style.width = "100%"
+        printTitle.style.boxSizing = "border-box"
+        printTitle.style.justifyContent = "space-between"
+        printTitle.style.alignItems = "center"
+
+        const titleSpan = document.createElement("span")
+        titleSpan.textContent = title
+
+        const dateSpan = document.createElement("span")
+        dateSpan.textContent = currentDate
+        dateSpan.style.fontSize = "11px"
+        dateSpan.style.fontWeight = "400"
+        dateSpan.style.marginLeft = "auto"
+
+        printTitle.appendChild(titleSpan)
+        printTitle.appendChild(dateSpan)
+
+        // ---------------------------------------------------------
+        // Clone the current table
+        // ---------------------------------------------------------
 
         const printTable = table.cloneNode(
             true,
@@ -95,6 +135,10 @@ export default function PrintButton({
             }
         }
 
+        // ---------------------------------------------------------
+        // Add title and table to print container
+        // ---------------------------------------------------------
+
         printContainer.appendChild(
             printTitle,
         )
@@ -141,12 +185,22 @@ export default function PrintButton({
                 }
 
                 #payment-print-container h1 {
-                    display: block !important;
+                    display: flex !important;
+                    width: 100% !important;
+                    box-sizing: border-box !important;
+                    justify-content: space-between !important;
+                    align-items: center !important;
                     margin: 0 0 12px 0;
                     padding: 0;
                     font-size: 18px;
                     font-weight: 700;
                     color: #000;
+                }
+
+                #payment-print-container h1 span:last-child {
+                    margin-left: auto !important;
+                    font-size: 11px !important;
+                    font-weight: 400 !important;
                 }
 
                 #payment-print-container table {
@@ -208,12 +262,15 @@ export default function PrintButton({
         )
 
         // ---------------------------------------------------------
-        // CLEANUP
+        // CLEANUP AFTER PRINTING
         // ---------------------------------------------------------
 
         const cleanup = () => {
             printContainer.remove()
             printStyle.remove()
+
+            // Restore original browser document title
+            document.title = originalDocumentTitle
 
             window.removeEventListener(
                 "afterprint",

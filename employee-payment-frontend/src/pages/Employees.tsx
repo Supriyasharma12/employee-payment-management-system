@@ -80,7 +80,9 @@ function FormField({
             {children}
 
             {error && (
-                <p className="text-xs text-red-600">{error}</p>
+                <p className="text-xs text-red-600">
+                    {error}
+                </p>
             )}
         </div>
     )
@@ -177,6 +179,7 @@ export default function Employees() {
     const emptyForm: EmployeeRequest = {
         employeeCode: "",
         name: "",
+        panNumber: "",
         accountNumber: "",
         ifscCode: "",
         position: "",
@@ -623,6 +626,9 @@ export default function Employees() {
             name:
                 employee.name ?? "",
 
+            panNumber:
+                employee.panNumber ?? "",
+
             accountNumber:
                 employee.accountNumber ??
                 "",
@@ -694,30 +700,48 @@ export default function Employees() {
                 "Employee name is required."
         }
 
+        // PAN NUMBER
+        if (!form.panNumber.trim()) {
+            errors.panNumber =
+                "PAN number is required."
+        } else if (
+            !/^[A-Z]{5}[0-9]{4}[A-Z]$/.test(
+                form.panNumber
+                    .trim()
+                    .toUpperCase(),
+            )
+        ) {
+            errors.panNumber =
+                "Enter a valid 10-character PAN number."
+        }
+
         if (!form.categoryId) {
             errors.categoryId =
                 "Please select an employee category."
         }
 
-        if (form.accountNumber) {
-            if (
-                !/^\d+$/.test(
-                    form.accountNumber,
-                )
-            ) {
-                errors.accountNumber =
-                    "Account number must contain digits only."
-            } else if (
-                form.accountNumber.length <
-                8 ||
-                form.accountNumber.length >
-                18
-            ) {
-                errors.accountNumber =
-                    "Account number must be between 8 and 18 digits."
-            }
+        // ACCOUNT NUMBER
+        if (!form.accountNumber.trim()) {
+            errors.accountNumber =
+                "Account number is required."
+        } else if (
+            !/^\d+$/.test(
+                form.accountNumber,
+            )
+        ) {
+            errors.accountNumber =
+                "Account number must contain digits only."
+        } else if (
+            form.accountNumber.length <
+            8 ||
+            form.accountNumber.length >
+            18
+        ) {
+            errors.accountNumber =
+                "Account number must be between 8 and 18 digits."
         }
 
+        // IFSC - OPTIONAL
         if (form.ifscCode) {
             if (
                 !/^[A-Z]{4}0[A-Z0-9]{6}$/.test(
@@ -729,6 +753,7 @@ export default function Employees() {
             }
         }
 
+        // PHONE
         if (form.phoneNumber) {
             if (
                 !/^[6-9]\d{9}$/.test(
@@ -740,6 +765,7 @@ export default function Employees() {
             }
         }
 
+        // EMAIL
         if (form.email) {
             if (
                 !/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(
@@ -751,6 +777,7 @@ export default function Employees() {
             }
         }
 
+        // GRADE PAY
         if (form.gradePay < 0) {
             errors.gradePay =
                 "Grade Pay cannot be negative."
@@ -764,7 +791,9 @@ export default function Employees() {
     // =========================================================
 
     const handleSubmit = async (
-        event: { preventDefault: () => void },
+        event: {
+            preventDefault: () => void
+        },
     ) => {
         event.preventDefault()
 
@@ -1074,7 +1103,6 @@ export default function Employees() {
 
                         </div>
 
-
                         {/* =====================================================
         SCROLLABLE FORM AREA
        ===================================================== */}
@@ -1096,7 +1124,6 @@ export default function Employees() {
                                         {error}
                                     </div>
                                 )}
-
 
                                 {/* =================================================
                 BASIC INFORMATION
@@ -1158,7 +1185,6 @@ export default function Employees() {
                                             />
                                         </FormField>
 
-
                                         {/* Employee Name */}
 
                                         <FormField
@@ -1187,6 +1213,47 @@ export default function Employees() {
                                             />
                                         </FormField>
 
+                                        {/* PAN Number */}
+
+                                        <FormField
+                                            label="PAN Number"
+                                            required
+                                            error={fieldErrors.panNumber}
+                                        >
+                                            <Input
+                                                id="panNumber"
+                                                type="text"
+                                                value={form.panNumber}
+                                                onChange={(event) => {
+                                                    const value =
+                                                        event.target.value
+                                                            .replace(
+                                                                /\s/g,
+                                                                "",
+                                                            )
+                                                            .toUpperCase()
+                                                            .slice(
+                                                                0,
+                                                                10,
+                                                            )
+
+                                                    updateField(
+                                                        "panNumber",
+                                                        value,
+                                                    )
+
+                                                    clearFieldError(
+                                                        "panNumber",
+                                                    )
+                                                }}
+                                                placeholder="e.g. ABCDE1234F"
+                                                maxLength={10}
+                                                className="h-11 rounded-xl border-slate-200 shadow-sm"
+                                                aria-invalid={
+                                                    !!fieldErrors.panNumber
+                                                }
+                                            />
+                                        </FormField>
 
                                         {/* Designation */}
 
@@ -1206,7 +1273,6 @@ export default function Employees() {
                                             />
 
                                         </FormField>
-
 
                                         {/* Position */}
 
@@ -1230,7 +1296,6 @@ export default function Employees() {
                                     </div>
 
                                 </section>
-
 
                                 {/* =================================================
                 EMPLOYMENT DETAILS
@@ -1332,7 +1397,6 @@ export default function Employees() {
 
                                         </FormField>
 
-
                                         {/* Bank */}
 
                                         <FormField label="Bank">
@@ -1393,7 +1457,6 @@ export default function Employees() {
                                             </div>
 
                                         </FormField>
-
 
                                         {/* Grade Pay */}
 
@@ -1465,7 +1528,6 @@ export default function Employees() {
 
                                         </FormField>
 
-
                                         {/* Scale */}
 
                                         <FormField label="Scale">
@@ -1484,7 +1546,6 @@ export default function Employees() {
                                             />
 
                                         </FormField>
-
 
                                         {/* Headquarters */}
 
@@ -1513,7 +1574,6 @@ export default function Employees() {
                                     </div>
 
                                 </section>
-
 
                                 {/* =================================================
                 BANKING INFORMATION
@@ -1551,6 +1611,7 @@ export default function Employees() {
 
                                         <FormField
                                             label="Bank Account Number"
+                                            required
                                             error={
                                                 fieldErrors.accountNumber
                                             }
@@ -1588,7 +1649,6 @@ export default function Employees() {
                                             />
 
                                         </FormField>
-
 
                                         {/* IFSC */}
 
@@ -1637,7 +1697,6 @@ export default function Employees() {
                                     </div>
 
                                 </section>
-
 
                                 {/* =================================================
                 CONTACT INFORMATION
@@ -1719,7 +1778,6 @@ export default function Employees() {
 
                                         </FormField>
 
-
                                         {/* Email */}
 
                                         <FormField
@@ -1762,7 +1820,6 @@ export default function Employees() {
                             </form>
 
                         </div>
-
 
                         {/* =====================================================
         STICKY FOOTER
@@ -2115,6 +2172,10 @@ export default function Employees() {
                                         </th>
 
                                         <th className="px-4 py-3 text-left text-xs font-semibold uppercase tracking-wide text-slate-500">
+                                            PAN
+                                        </th>
+
+                                        <th className="px-4 py-3 text-left text-xs font-semibold uppercase tracking-wide text-slate-500">
                                             Designation
                                         </th>
 
@@ -2176,6 +2237,16 @@ export default function Employees() {
 
                                                 </td>
 
+                                                {/* PAN */}
+
+                                                <td className="px-4 py-3.5">
+
+    <span className="font-medium tracking-wide text-slate-700">
+        {employee.panNumber || "-"}
+    </span>
+
+                                                </td>
+
                                                 {/* DESIGNATION */}
 
                                                 <td className="px-4 py-3.5 text-slate-600">
@@ -2200,9 +2271,11 @@ export default function Employees() {
                                                             </span>
 
                                                     ) : (
+
                                                         <span className="text-slate-400">
                                                                 -
                                                             </span>
+
                                                     )}
 
                                                 </td>
@@ -2359,11 +2432,11 @@ export default function Employees() {
                                     </Button>
 
                                     <span className="min-w-10 text-center text-xs font-medium text-slate-500">
-                                    {
-                                        currentPage +
-                                        1
-                                    }
-                                </span>
+                                        {
+                                            currentPage +
+                                            1
+                                        }
+                                    </span>
 
                                     <Button
                                         type="button"

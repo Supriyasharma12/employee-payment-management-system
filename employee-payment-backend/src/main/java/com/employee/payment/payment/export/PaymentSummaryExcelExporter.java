@@ -13,34 +13,53 @@ import java.util.List;
 @Component
 public class PaymentSummaryExcelExporter {
 
-    public byte[] export(List<PaymentSummaryResponse> payments) throws IOException {
+    public byte[] export(List<PaymentSummaryResponse> payments)
+            throws IOException {
 
         try (Workbook workbook = new XSSFWorkbook();
-             ByteArrayOutputStream outputStream = new ByteArrayOutputStream()) {
+             ByteArrayOutputStream outputStream =
+                     new ByteArrayOutputStream()) {
 
-            Sheet sheet = workbook.createSheet("Payment Summary");
+            Sheet sheet =
+                    workbook.createSheet("Payment Summary");
 
-            // Header style
-            CellStyle headerStyle = workbook.createCellStyle();
+            // ---------------------------------------------------------
+            // HEADER STYLE
+            // ---------------------------------------------------------
 
-            Font headerFont = workbook.createFont();
+            CellStyle headerStyle =
+                    workbook.createCellStyle();
+
+            Font headerFont =
+                    workbook.createFont();
+
             headerFont.setBold(true);
 
             headerStyle.setFont(headerFont);
 
-            // Amount style
-            CellStyle amountStyle = workbook.createCellStyle();
+            // ---------------------------------------------------------
+            // AMOUNT STYLE
+            // ---------------------------------------------------------
+
+            CellStyle amountStyle =
+                    workbook.createCellStyle();
 
             amountStyle.setDataFormat(
-                    workbook.createDataFormat()
+                    workbook
+                            .createDataFormat()
                             .getFormat("#,##0.00")
             );
 
-            // Headers
+            // ---------------------------------------------------------
+            // HEADERS
+            // ---------------------------------------------------------
+
             String[] headers = {
                     "Payment ID",
                     "Employee Code",
                     "Employee Name",
+                    "PAN",
+                    "Period",
                     "Running TA",
                     "Fixed TA",
                     "Other",
@@ -64,40 +83,145 @@ public class PaymentSummaryExcelExporter {
                 cell.setCellStyle(headerStyle);
             }
 
-            // Data
+            // ---------------------------------------------------------
+            // DATA
+            // ---------------------------------------------------------
+
             int rowNumber = 1;
 
             for (PaymentSummaryResponse payment : payments) {
 
-                Row row = sheet.createRow(rowNumber++);
+                Row row =
+                        sheet.createRow(rowNumber++);
 
+                // Payment ID
                 row.createCell(0)
-                        .setCellValue(payment.paymentId());
+                        .setCellValue(
+                                payment.paymentId()
+                        );
 
+                // Employee Code
                 row.createCell(1)
-                        .setCellValue(payment.employeeCode());
+                        .setCellValue(
+                                payment.employeeCode() != null
+                                        ? payment.employeeCode()
+                                        : ""
+                        );
 
+                // Employee Name
                 row.createCell(2)
-                        .setCellValue(payment.employeeName());
+                        .setCellValue(
+                                payment.employeeName() != null
+                                        ? payment.employeeName()
+                                        : ""
+                        );
 
-                createAmountCell(row, 3, payment.runningTa(), amountStyle);
-                createAmountCell(row, 4, payment.fixedTa(), amountStyle);
-                createAmountCell(row, 5, payment.other(), amountStyle);
-                createAmountCell(row, 6, payment.grossTotal(), amountStyle);
-                createAmountCell(row, 7, payment.miscellaneous(), amountStyle);
-                createAmountCell(row, 8, payment.advanceTa(), amountStyle);
-                createAmountCell(row, 9, payment.advanceOther(), amountStyle);
-                createAmountCell(row, 10, payment.deductionTotal(), amountStyle);
-                createAmountCell(row, 11, payment.netPayment(), amountStyle);
+                // PAN
+                row.createCell(3)
+                        .setCellValue(
+                                payment.panNumber() != null
+                                        ? payment.panNumber()
+                                        : ""
+                        );
 
-                row.createCell(12)
-                        .setCellValue(payment.status());
+                // Period
+                String period =
+                        String.format(
+                                "%02d/%d",
+                                payment.month(),
+                                payment.year()
+                        );
+
+                row.createCell(4)
+                        .setCellValue(period);
+
+                // Amount fields
+                createAmountCell(
+                        row,
+                        5,
+                        payment.runningTa(),
+                        amountStyle
+                );
+
+                createAmountCell(
+                        row,
+                        6,
+                        payment.fixedTa(),
+                        amountStyle
+                );
+
+                createAmountCell(
+                        row,
+                        7,
+                        payment.other(),
+                        amountStyle
+                );
+
+                createAmountCell(
+                        row,
+                        8,
+                        payment.grossTotal(),
+                        amountStyle
+                );
+
+                createAmountCell(
+                        row,
+                        9,
+                        payment.miscellaneous(),
+                        amountStyle
+                );
+
+                createAmountCell(
+                        row,
+                        10,
+                        payment.advanceTa(),
+                        amountStyle
+                );
+
+                createAmountCell(
+                        row,
+                        11,
+                        payment.advanceOther(),
+                        amountStyle
+                );
+
+                createAmountCell(
+                        row,
+                        12,
+                        payment.deductionTotal(),
+                        amountStyle
+                );
+
+                createAmountCell(
+                        row,
+                        13,
+                        payment.netPayment(),
+                        amountStyle
+                );
+
+                // Status
+                row.createCell(14)
+                        .setCellValue(
+                                payment.status() != null
+                                        ? payment.status()
+                                        : ""
+                        );
             }
 
-            // Auto-size columns
-            for (int i = 0; i < headers.length; i++) {
+            // ---------------------------------------------------------
+            // AUTO-SIZE COLUMNS
+            // ---------------------------------------------------------
+
+            for (int i = 0;
+                 i < headers.length;
+                 i++) {
+
                 sheet.autoSizeColumn(i);
             }
+
+            // ---------------------------------------------------------
+            // WRITE WORKBOOK
+            // ---------------------------------------------------------
 
             workbook.write(outputStream);
 
@@ -105,17 +229,27 @@ public class PaymentSummaryExcelExporter {
         }
     }
 
+    // -------------------------------------------------------------
+    // AMOUNT CELL HELPER
+    // -------------------------------------------------------------
+
     private void createAmountCell(
             Row row,
             int column,
             BigDecimal value,
             CellStyle style) {
 
-        Cell cell = row.createCell(column);
+        Cell cell =
+                row.createCell(column);
 
         if (value != null) {
-            cell.setCellValue(value.doubleValue());
+
+            cell.setCellValue(
+                    value.doubleValue()
+            );
+
         } else {
+
             cell.setCellValue(0.00);
         }
 

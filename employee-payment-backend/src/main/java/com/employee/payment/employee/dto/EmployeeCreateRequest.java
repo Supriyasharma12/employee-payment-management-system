@@ -23,11 +23,17 @@ public record EmployeeCreateRequest(
         @Size(max = 150, message = "Employee name cannot exceed 150 characters")
         String name,
 
+        @NotBlank(message = "PAN number is required")
+        @Pattern(
+                regexp = "^[A-Z]{5}[0-9]{4}[A-Z]$",
+                message = "Please enter a valid PAN number"
+        )
+        String panNumber,
+
         @NotBlank(message = "Account number is required")
         @Size(max = 50, message = "Account number cannot exceed 50 characters")
         String accountNumber,
 
-        @NotBlank(message = "IFSC code is required")
         @Size(max = 20, message = "IFSC code cannot exceed 20 characters")
         String ifscCode,
 

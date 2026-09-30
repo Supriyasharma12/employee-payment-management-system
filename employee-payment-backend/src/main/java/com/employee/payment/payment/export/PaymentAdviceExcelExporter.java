@@ -13,86 +13,210 @@ import java.util.List;
 @Component
 public class PaymentAdviceExcelExporter {
 
-    public byte[] export(List<PaymentAdviceResponse> payments) throws IOException {
+    public byte[] export(List<PaymentAdviceResponse> payments)
+            throws IOException {
 
         try (Workbook workbook = new XSSFWorkbook();
-             ByteArrayOutputStream outputStream = new ByteArrayOutputStream()) {
+             ByteArrayOutputStream outputStream =
+                     new ByteArrayOutputStream()) {
 
             Sheet sheet = workbook.createSheet("Payment Advice");
 
-            // Header style
-            CellStyle headerStyle = workbook.createCellStyle();
-            Font headerFont = workbook.createFont();
+            // ---------------------------------------------------------
+            // HEADER STYLE
+            // ---------------------------------------------------------
+
+            CellStyle headerStyle =
+                    workbook.createCellStyle();
+
+            Font headerFont =
+                    workbook.createFont();
+
             headerFont.setBold(true);
+
             headerStyle.setFont(headerFont);
 
-            // Currency style
-            CellStyle amountStyle = workbook.createCellStyle();
+            // ---------------------------------------------------------
+            // CURRENCY STYLE
+            // ---------------------------------------------------------
+
+            CellStyle amountStyle =
+                    workbook.createCellStyle();
+
             amountStyle.setDataFormat(
-                    workbook.createDataFormat().getFormat("#,##0.00")
+                    workbook
+                            .createDataFormat()
+                            .getFormat("#,##0.00")
             );
 
-            // Header row
+            // ---------------------------------------------------------
+            // HEADER ROW
+            // ---------------------------------------------------------
+
             Row header = sheet.createRow(0);
 
             String[] headers = {
-                    "Payment ID",
                     "Employee Code",
                     "Employee Name",
+                    "PAN",
+                    "Period",
                     "Bank Name",
                     "Account Number",
                     "IFSC Code",
                     "Category",
-                    "Month",
-                    "Year",
-                    "Net Payment",
-                    "Status"
+                    "Net Payment"
             };
 
             for (int i = 0; i < headers.length; i++) {
+
                 Cell cell = header.createCell(i);
+
                 cell.setCellValue(headers[i]);
+
                 cell.setCellStyle(headerStyle);
             }
 
-            // Data rows
+            // ---------------------------------------------------------
+            // DATA ROWS
+            // ---------------------------------------------------------
+
             int rowNumber = 1;
 
             for (PaymentAdviceResponse payment : payments) {
 
-                Row row = sheet.createRow(rowNumber++);
+                Row row =
+                        sheet.createRow(rowNumber++);
 
-                row.createCell(0).setCellValue(payment.paymentId());
-                row.createCell(1).setCellValue(payment.employeeCode());
-                row.createCell(2).setCellValue(payment.employeeName());
-                row.createCell(3).setCellValue(
-                        payment.bankName() != null ? payment.bankName() : ""
+                // -----------------------------------------------------
+                // Employee Code
+                // -----------------------------------------------------
+
+                row.createCell(0).setCellValue(
+                        payment.employeeCode() != null
+                                ? payment.employeeCode()
+                                : ""
                 );
-                row.createCell(4).setCellValue(payment.accountNumber());
-                row.createCell(5).setCellValue(payment.ifscCode());
-                row.createCell(6).setCellValue(payment.categoryName());
-                row.createCell(7).setCellValue(payment.month());
-                row.createCell(8).setCellValue(payment.year());
 
-                Cell netPaymentCell = row.createCell(9);
+                // -----------------------------------------------------
+                // Employee Name
+                // -----------------------------------------------------
 
-                BigDecimal netPayment = payment.netPayment();
+                row.createCell(1).setCellValue(
+                        payment.employeeName() != null
+                                ? payment.employeeName()
+                                : ""
+                );
+
+                // -----------------------------------------------------
+                // PAN
+                // -----------------------------------------------------
+
+                row.createCell(2).setCellValue(
+                        payment.panNumber() != null
+                                ? payment.panNumber()
+                                : ""
+                );
+
+                // -----------------------------------------------------
+                // Period
+                // -----------------------------------------------------
+
+                String period =
+                        String.format(
+                                "%02d/%d",
+                                payment.month(),
+                                payment.year()
+                        );
+
+                row.createCell(3).setCellValue(period);
+
+                // -----------------------------------------------------
+                // Bank Name
+                // -----------------------------------------------------
+
+                row.createCell(4).setCellValue(
+                        payment.bankName() != null
+                                ? payment.bankName()
+                                : ""
+                );
+
+                // -----------------------------------------------------
+                // Account Number
+                // -----------------------------------------------------
+                // Keep this as text so that leading zeros are preserved.
+
+                Cell accountNumberCell =
+                        row.createCell(5);
+
+                accountNumberCell.setCellValue(
+                        payment.accountNumber() != null
+                                ? payment.accountNumber()
+                                : ""
+                );
+
+                // -----------------------------------------------------
+                // IFSC Code
+                // -----------------------------------------------------
+
+                Cell ifscCell =
+                        row.createCell(6);
+
+                ifscCell.setCellValue(
+                        payment.ifscCode() != null
+                                ? payment.ifscCode()
+                                : ""
+                );
+
+                // -----------------------------------------------------
+                // Category
+                // -----------------------------------------------------
+
+                row.createCell(7).setCellValue(
+                        payment.categoryName() != null
+                                ? payment.categoryName()
+                                : ""
+                );
+
+                // -----------------------------------------------------
+                // Net Payment
+                // -----------------------------------------------------
+
+                Cell netPaymentCell =
+                        row.createCell(8);
+
+                BigDecimal netPayment =
+                        payment.netPayment();
 
                 if (netPayment != null) {
-                    netPaymentCell.setCellValue(netPayment.doubleValue());
-                    netPaymentCell.setCellStyle(amountStyle);
+
+                    netPaymentCell.setCellValue(
+                            netPayment.doubleValue()
+                    );
+
                 } else {
+
                     netPaymentCell.setCellValue(0.00);
-                    netPaymentCell.setCellStyle(amountStyle);
                 }
 
-                row.createCell(10).setCellValue(payment.status());
+                netPaymentCell.setCellStyle(
+                        amountStyle
+                );
             }
 
-            // Automatically adjust column widths
-            for (int i = 0; i < headers.length; i++) {
+            // ---------------------------------------------------------
+            // AUTO-SIZE COLUMNS
+            // ---------------------------------------------------------
+
+            for (int i = 0;
+                 i < headers.length;
+                 i++) {
+
                 sheet.autoSizeColumn(i);
             }
+
+            // ---------------------------------------------------------
+            // WRITE EXCEL FILE
+            // ---------------------------------------------------------
 
             workbook.write(outputStream);
 

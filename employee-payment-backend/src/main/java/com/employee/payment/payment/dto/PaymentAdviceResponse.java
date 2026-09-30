@@ -13,6 +13,7 @@ public record PaymentAdviceResponse(
         String bankName,
 
         String accountNumber,
+        String panNumber,
 
         String ifscCode,
 

@@ -1,5 +1,4 @@
 package com.employee.payment.payment.service;
-
 import com.employee.payment.admin.entity.Admin;
 import com.employee.payment.admin.repository.AdminRepository;
 import com.employee.payment.audit.service.AuditLogService;
@@ -515,13 +514,19 @@ public class PaymentService {
                     PaymentPeriod period =
                             payment.getPaymentPeriod();
 
+                    Employee employee =
+                            payment.getEmployee();
+
                     return new PaymentSummaryResponse(
 
                             payment.getId(),
 
-                            payment.getEmployee().getId(),
-                            payment.getEmployee().getEmployeeCode(),
-                            payment.getEmployee().getName(),
+                            employee.getId(),
+                            employee.getEmployeeCode(),
+                            employee.getName(),
+
+                            // PAN comes from Employee Master.
+                            employee.getPanNumber(),
 
                             period.getMonth(),
                             period.getYear(),
@@ -634,6 +639,10 @@ public class PaymentService {
 
                             bankName,
                             employee.getAccountNumber(),
+
+                            // PAN comes from Employee Master.
+                            employee.getPanNumber(),
+
                             employee.getIfscCode(),
 
                             categoryName,
@@ -659,3 +668,4 @@ public class PaymentService {
         );
     }
 }
+

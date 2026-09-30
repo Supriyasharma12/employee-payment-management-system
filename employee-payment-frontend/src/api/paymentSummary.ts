@@ -12,6 +12,7 @@ export interface PaymentSummary {
 
     employeeCode: string
     employeeName: string
+    panNumber: string
 
     paymentPeriodId?: number
     month?: number

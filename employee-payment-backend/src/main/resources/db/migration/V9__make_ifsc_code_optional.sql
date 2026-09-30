@@ -1,0 +1,2 @@
+ALTER TABLE employees
+    ALTER COLUMN ifsc_code DROP NOT NULL;

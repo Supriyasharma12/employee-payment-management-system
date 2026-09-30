@@ -285,23 +285,30 @@ export default function PaymentAdvice() {
         ],
     )
 
-// ---------------------------------------------------------
-// INITIAL LOAD + FILTER CHANGE
-// ---------------------------------------------------------
+
+    // ---------------------------------------------------------
+    // INITIAL LOAD + FILTER CHANGE
+    // ---------------------------------------------------------
 
     useEffect(() => {
-        const timer = window.setTimeout(() => {
-            void loadAdvice(
-                0,
-                appliedEmployeeCode.trim().length > 0 ||
-                appliedEmployeeName.trim().length > 0,
-            )
-        }, 0)
+
+        const timer =
+            window.setTimeout(() => {
+
+                void loadAdvice(
+                    0,
+                    appliedEmployeeCode.trim().length > 0 ||
+                    appliedEmployeeName.trim().length > 0,
+                )
+
+            }, 0)
 
         return () => {
             window.clearTimeout(timer)
         }
+
     }, [loadAdvice])
+
 
     // ---------------------------------------------------------
     // AUTOMATIC TEXT SEARCH
@@ -655,8 +662,8 @@ export default function PaymentAdvice() {
         amount: number,
     ) =>
         `₹${Number(
-    amount || 0,
-).toFixed(2)}`
+            amount || 0,
+        ).toFixed(2)}`
 
 
     const formatPeriod = (
@@ -664,48 +671,48 @@ export default function PaymentAdvice() {
         year: number,
     ) =>
         `${String(month).padStart(
-    2,
-    "0",
-)}/${year}`
+            2,
+            "0",
+        )}/${year}`
 
 
-// ---------------------------------------------------------
-// STYLES
-// ---------------------------------------------------------
+    // ---------------------------------------------------------
+    // STYLES
+    // ---------------------------------------------------------
 
-const selectClassName =
-    "h-11 w-full appearance-none rounded-xl border border-slate-200 bg-white px-3 pr-10 text-sm text-slate-700 shadow-sm outline-none transition focus:border-primary focus:ring-2 focus:ring-primary/15"
-
-
-const inputClassName =
-    "h-11 rounded-xl border-slate-200 bg-white pl-9 pr-9 shadow-sm focus:border-primary focus:ring-primary/15"
+    const selectClassName =
+        "h-11 w-full appearance-none rounded-xl border border-slate-200 bg-white px-3 pr-10 text-sm text-slate-700 shadow-sm outline-none transition focus:border-primary focus:ring-2 focus:ring-primary/15"
 
 
-// ---------------------------------------------------------
-// PAGINATION DISPLAY
-// ---------------------------------------------------------
-
-const firstRecord =
-    totalElements === 0
-        ? 0
-        : currentPage * PAGE_SIZE + 1
+    const inputClassName =
+        "h-11 rounded-xl border-slate-200 bg-white pl-9 pr-9 shadow-sm focus:border-primary focus:ring-primary/15"
 
 
-const lastRecord =
-    Math.min(
-        (currentPage + 1) *
-        PAGE_SIZE,
-        totalElements,
-    )
+    // ---------------------------------------------------------
+    // PAGINATION DISPLAY
+    // ---------------------------------------------------------
+
+    const firstRecord =
+        totalElements === 0
+            ? 0
+            : currentPage * PAGE_SIZE + 1
 
 
-// ---------------------------------------------------------
-// UI
-// ---------------------------------------------------------
+    const lastRecord =
+        Math.min(
+            (currentPage + 1) *
+            PAGE_SIZE,
+            totalElements,
+        )
 
-return (
-    <>
-        <style>{`
+
+    // ---------------------------------------------------------
+    // UI
+    // ---------------------------------------------------------
+
+    return (
+        <>
+            <style>{`
                 @media print {
                     .payment-advice-print-hide {
                         display: none !important;
@@ -713,514 +720,207 @@ return (
                 }
             `}</style>
 
-        <div className="space-y-7">
 
-            {/* -------------------------------------------------
-                PAGE HEADER
-            ------------------------------------------------- */}
+            <div className="space-y-7">
 
-            <div className="flex flex-col gap-4 lg:flex-row lg:items-end lg:justify-between">
+                {/* -------------------------------------------------
+                    PAGE HEADER
+                ------------------------------------------------- */}
 
-                <div>
+                <div className="flex flex-col gap-4 lg:flex-row lg:items-end lg:justify-between">
 
-                    <div className="mb-2 flex items-center gap-2 text-xs font-semibold uppercase tracking-wider text-primary">
+                    <div>
 
-                        <Landmark className="h-4 w-4" />
+                        <div className="mb-2 flex items-center gap-2 text-xs font-semibold uppercase tracking-wider text-primary">
 
-                        Financial Records
+                            <Landmark className="h-4 w-4" />
+
+                            Financial Records
+
+                        </div>
+
+                        <h2 className="text-3xl font-bold tracking-tight text-slate-900">
+                            Payment Advice
+                        </h2>
 
                     </div>
 
-                    <h2 className="text-3xl font-bold tracking-tight text-slate-900">
-                        Payment Advice
-                    </h2>
+
+                    <div className="flex flex-wrap gap-2">
+
+                        <Button
+                            type="button"
+                            variant="outline"
+                            onClick={() =>
+                                void handleExport()
+                            }
+                            disabled={
+                                exporting ||
+                                loading
+                            }
+                            className="border-slate-200 bg-white shadow-sm hover:bg-slate-50"
+                        >
+
+                            <Download className="mr-2 h-4 w-4" />
+
+                            {exporting
+                                ? "Exporting..."
+                                : "Export Excel"}
+
+                        </Button>
+
+
+                        <PrintButton
+                            title="Payment Advice"
+                        />
+
+                    </div>
 
                 </div>
 
 
-                <div className="flex flex-wrap gap-2">
+                {/* -------------------------------------------------
+                    ERROR
+                ------------------------------------------------- */}
 
-                    <Button
-                        type="button"
-                        variant="outline"
-                        onClick={() =>
-                            void handleExport()
-                        }
-                        disabled={
-                            exporting ||
-                            loading
-                        }
-                        className="border-slate-200 bg-white shadow-sm hover:bg-slate-50"
-                    >
+                {errorMessage && (
 
-                        <Download className="mr-2 h-4 w-4" />
+                    <div className="flex items-start gap-3 rounded-xl border border-red-200 bg-red-50 px-4 py-3 text-sm text-red-800">
 
-                        {exporting
-                            ? "Exporting..."
-                            : "Export Excel"}
+                        <X className="mt-0.5 h-4 w-4 shrink-0" />
 
-                    </Button>
+                        <span>
+                            {errorMessage}
+                        </span>
+
+                    </div>
+
+                )}
 
 
-                    <PrintButton
-                        title="Payment Advice"
-                    />
+                {/* -------------------------------------------------
+                    FILTERS
+                ------------------------------------------------- */}
 
-                </div>
+                <section className="overflow-visible rounded-2xl border border-slate-200 bg-white shadow-sm">
 
-            </div>
+                    <div className="border-b border-slate-100 bg-slate-50/60 px-5 py-4 md:px-6">
 
+                        <h3 className="text-sm font-semibold text-slate-900">
+                            Filters
+                        </h3>
 
-            {/* -------------------------------------------------
-                ERROR
-            ------------------------------------------------- */}
-
-            {errorMessage && (
-
-                <div className="flex items-start gap-3 rounded-xl border border-red-200 bg-red-50 px-4 py-3 text-sm text-red-800">
-
-                    <X className="mt-0.5 h-4 w-4 shrink-0" />
-
-                    <span>
-                        {errorMessage}
-                    </span>
-
-                </div>
-
-            )}
+                    </div>
 
 
-            {/* -------------------------------------------------
-                FILTERS
-            ------------------------------------------------- */}
+                    <div className="px-5 py-5 md:px-6">
 
-            <section className="overflow-visible rounded-2xl border border-slate-200 bg-white shadow-sm">
-
-                <div className="border-b border-slate-100 bg-slate-50/60 px-5 py-4 md:px-6">
-
-                    <h3 className="text-sm font-semibold text-slate-900">
-                        Filters
-                    </h3>
-
-                </div>
+                        <div className="grid gap-5 md:grid-cols-2 xl:grid-cols-3">
 
 
-                <div className="px-5 py-5 md:px-6">
+                            {/* Payment Period */}
 
-                    <div className="grid gap-5 md:grid-cols-2 xl:grid-cols-3">
+                            <div className="space-y-2">
 
-
-                        {/* Payment Period */}
-
-                        <div className="space-y-2">
-
-                            <Label
-                                htmlFor="advicePeriod"
-                                className="text-xs font-semibold text-slate-600"
-                            >
-                                Payment Period
-                            </Label>
-
-                            <div className="relative">
-
-                                <select
-                                    id="advicePeriod"
-                                    value={
-                                        paymentPeriodId
-                                    }
-                                    onChange={(event) => {
-
-                                        setPaymentPeriodId(
-                                            event.target.value,
-                                        )
-
-                                        setCurrentPage(
-                                            0,
-                                        )
-                                    }}
-                                    className={
-                                        selectClassName
-                                    }
+                                <Label
+                                    htmlFor="advicePeriod"
+                                    className="text-xs font-semibold text-slate-600"
                                 >
+                                    Payment Period
+                                </Label>
 
-                                    <option value="">
-                                        All Payment Periods
-                                    </option>
+                                <div className="relative">
 
-                                    {paymentPeriods.map(
-                                        (period) => (
-
-                                            <option
-                                                key={
-                                                    period.id
-                                                }
-                                                value={
-                                                    period.id
-                                                }
-                                            >
-                                                {formatPeriod(
-                                                    period.month,
-                                                    period.year,
-                                                )}{" "}
-                                                —{" "}
-                                                {
-                                                    period.status
-                                                }
-                                            </option>
-
-                                        ),
-                                    )}
-
-                                </select>
-
-                                <ChevronDown className="pointer-events-none absolute right-3 top-1/2 h-4 w-4 -translate-y-1/2 text-slate-400" />
-
-                            </div>
-
-                        </div>
-
-
-                        {/* Employee Code */}
-
-                        <div className="space-y-2">
-
-                            <Label
-                                htmlFor="adviceEmployeeCode"
-                                className="text-xs font-semibold text-slate-600"
-                            >
-                                Employee Code
-                            </Label>
-
-                            <div className="relative">
-
-                                <Search className="pointer-events-none absolute left-3 top-1/2 z-10 h-4 w-4 -translate-y-1/2 text-slate-400" />
-
-
-                                <Input
-                                    id="adviceEmployeeCode"
-                                    value={
-                                        employeeCode
-                                    }
-                                    onChange={(
-                                        event,
-                                    ) => {
-
-                                        const value =
-                                            event
-                                                .target
-                                                .value
-
-                                        setEmployeeCode(
-                                            value,
-                                        )
-
-                                        setEmployeeName(
-                                            "",
-                                        )
-
-                                        setNameSuggestions(
-                                            [],
-                                        )
-
-                                        setActiveSuggestionField(
-                                            value.trim()
-                                                .length >= 2
-                                                ? "code"
-                                                : null,
-                                        )
-
-                                        void loadSuggestions(
-                                            value,
-                                            "code",
-                                        )
-                                    }}
-                                    onFocus={() => {
-
-                                        if (
-                                            codeSuggestions.length >
-                                            0
-                                        ) {
-                                            setActiveSuggestionField(
-                                                "code",
-                                            )
+                                    <select
+                                        id="advicePeriod"
+                                        value={
+                                            paymentPeriodId
                                         }
-                                    }}
-                                    onBlur={() => {
+                                        onChange={(event) => {
 
-                                        window.setTimeout(
-                                            () => {
-                                                setActiveSuggestionField(
-                                                    null,
-                                                )
-                                            },
-                                            150,
-                                        )
-                                    }}
-                                    onKeyDown={(
-                                        event,
-                                    ) => {
-
-                                        if (
-                                            event.key ===
-                                            "Enter"
-                                        ) {
-
-                                            event.preventDefault()
-
-                                            handleSearch()
-                                        }
-
-                                        if (
-                                            event.key ===
-                                            "Escape"
-                                        ) {
-
-                                            setActiveSuggestionField(
-                                                null,
-                                            )
-                                        }
-                                    }}
-                                    placeholder="Search employee code..."
-                                    autoComplete="off"
-                                    className={
-                                        inputClassName
-                                    }
-                                />
-
-
-                                {employeeCode && (
-
-                                    <button
-                                        type="button"
-                                        onMouseDown={(
-                                            event,
-                                        ) =>
-                                            event.preventDefault()
-                                        }
-                                        onClick={() => {
-
-                                            setEmployeeCode(
-                                                "",
+                                            setPaymentPeriodId(
+                                                event.target.value,
                                             )
 
-                                            setCodeSuggestions(
-                                                [],
-                                            )
-
-                                            setActiveSuggestionField(
-                                                null,
+                                            setCurrentPage(
+                                                0,
                                             )
                                         }}
-                                        className="absolute right-3 top-1/2 z-10 -translate-y-1/2 text-slate-400 hover:text-slate-700"
-                                        aria-label="Clear employee code"
+                                        className={
+                                            selectClassName
+                                        }
                                     >
 
-                                        <X className="h-4 w-4" />
+                                        <option value="">
+                                            All Payment Periods
+                                        </option>
 
-                                    </button>
+                                        {paymentPeriods.map(
+                                            (period) => (
 
-                                )}
+                                                <option
+                                                    key={
+                                                        period.id
+                                                    }
+                                                    value={
+                                                        period.id
+                                                    }
+                                                >
+                                                    {formatPeriod(
+                                                        period.month,
+                                                        period.year,
+                                                    )}{" "}
+                                                    —{" "}
+                                                    {
+                                                        period.status
+                                                    }
+                                                </option>
 
+                                            ),
+                                        )}
 
-                                {/* Code suggestions */}
+                                    </select>
 
-                                {activeSuggestionField ===
-                                    "code" &&
-                                    codeSuggestions.length >
-                                    0 && (
+                                    <ChevronDown className="pointer-events-none absolute right-3 top-1/2 h-4 w-4 -translate-y-1/2 text-slate-400" />
 
-                                        <div className="absolute left-0 right-0 top-[calc(100%+6px)] z-50 overflow-hidden rounded-xl border border-slate-200 bg-white shadow-xl">
-
-                                            <div className="border-b border-slate-100 bg-slate-50 px-3 py-2 text-[11px] font-semibold uppercase tracking-wide text-slate-400">
-                                                Matching employees
-                                            </div>
-
-                                            {codeSuggestions.map(
-                                                (
-                                                    employee,
-                                                ) => (
-
-                                                    <button
-                                                        key={
-                                                            employee.id
-                                                        }
-                                                        type="button"
-                                                        onMouseDown={(
-                                                            event,
-                                                        ) =>
-                                                            event.preventDefault()
-                                                        }
-                                                        onClick={() =>
-                                                            selectEmployeeForCode(
-                                                                employee,
-                                                            )
-                                                        }
-                                                        className="flex w-full items-center gap-3 border-b border-slate-100 px-3 py-3 text-left last:border-0 hover:bg-primary/[0.04]"
-                                                    >
-
-                                                        <span className="flex h-8 w-8 shrink-0 items-center justify-center rounded-lg bg-primary/10 text-primary">
-
-                                                            <UserRound className="h-4 w-4" />
-
-                                                        </span>
-
-
-                                                        <span className="min-w-0">
-
-                                                            <span className="block text-sm font-semibold text-slate-800">
-
-                                                                {
-                                                                    employee.employeeCode
-                                                                }
-
-                                                            </span>
-
-                                                            <span className="block truncate text-xs text-slate-500">
-
-                                                                {
-                                                                    employee.name
-                                                                }
-
-                                                                {employee.designation
-                                                                    ? ` • ${employee.designation}`
-                                                                    : ""}
-
-                                                            </span>
-
-                                                        </span>
-
-                                                    </button>
-
-                                                ),
-                                            )}
-
-                                        </div>
-
-                                    )}
+                                </div>
 
                             </div>
 
-                        </div>
+
+                            {/* Employee Code */}
+
+                            <div className="space-y-2">
+
+                                <Label
+                                    htmlFor="adviceEmployeeCode"
+                                    className="text-xs font-semibold text-slate-600"
+                                >
+                                    Employee Code
+                                </Label>
+
+                                <div className="relative">
+
+                                    <Search className="pointer-events-none absolute left-3 top-1/2 z-10 h-4 w-4 -translate-y-1/2 text-slate-400" />
 
 
-                        {/* Employee Name */}
-
-                        <div className="space-y-2">
-
-                            <Label
-                                htmlFor="adviceEmployeeName"
-                                className="text-xs font-semibold text-slate-600"
-                            >
-                                Employee Name
-                            </Label>
-
-                            <div className="relative">
-
-                                <Search className="pointer-events-none absolute left-3 top-1/2 z-10 h-4 w-4 -translate-y-1/2 text-slate-400" />
-
-
-                                <Input
-                                    id="adviceEmployeeName"
-                                    value={
-                                        employeeName
-                                    }
-                                    onChange={(
-                                        event,
-                                    ) => {
-
-                                        const value =
-                                            event
-                                                .target
-                                                .value
-
-                                        setEmployeeName(
-                                            value,
-                                        )
-
-                                        setEmployeeCode(
-                                            "",
-                                        )
-
-                                        setCodeSuggestions(
-                                            [],
-                                        )
-
-                                        setActiveSuggestionField(
-                                            value.trim()
-                                                .length >= 2
-                                                ? "name"
-                                                : null,
-                                        )
-
-                                        void loadSuggestions(
-                                            value,
-                                            "name",
-                                        )
-                                    }}
-                                    onFocus={() => {
-
-                                        if (
-                                            nameSuggestions.length >
-                                            0
-                                        ) {
-                                            setActiveSuggestionField(
-                                                "name",
-                                            )
+                                    <Input
+                                        id="adviceEmployeeCode"
+                                        value={
+                                            employeeCode
                                         }
-                                    }}
-                                    onBlur={() => {
-
-                                        window.setTimeout(
-                                            () => {
-                                                setActiveSuggestionField(
-                                                    null,
-                                                )
-                                            },
-                                            150,
-                                        )
-                                    }}
-                                    onKeyDown={(
-                                        event,
-                                    ) => {
-
-                                        if (
-                                            event.key ===
-                                            "Enter"
-                                        ) {
-
-                                            event.preventDefault()
-
-                                            handleSearch()
-                                        }
-
-                                        if (
-                                            event.key ===
-                                            "Escape"
-                                        ) {
-
-                                            setActiveSuggestionField(
-                                                null,
-                                            )
-                                        }
-                                    }}
-                                    placeholder="Search employee name..."
-                                    autoComplete="off"
-                                    className={
-                                        inputClassName
-                                    }
-                                />
-
-
-                                {employeeName && (
-
-                                    <button
-                                        type="button"
-                                        onMouseDown={(
+                                        onChange={(
                                             event,
-                                        ) =>
-                                            event.preventDefault()
-                                        }
-                                        onClick={() => {
+                                        ) => {
+
+                                            const value =
+                                                event
+                                                    .target
+                                                    .value
+
+                                            setEmployeeCode(
+                                                value,
+                                            )
 
                                             setEmployeeName(
                                                 "",
@@ -1231,515 +931,858 @@ return (
                                             )
 
                                             setActiveSuggestionField(
-                                                null,
+                                                value.trim()
+                                                    .length >= 2
+                                                    ? "code"
+                                                    : null,
+                                            )
+
+                                            void loadSuggestions(
+                                                value,
+                                                "code",
                                             )
                                         }}
-                                        className="absolute right-3 top-1/2 z-10 -translate-y-1/2 text-slate-400 hover:text-slate-700"
-                                        aria-label="Clear employee name"
+                                        onFocus={() => {
+
+                                            if (
+                                                codeSuggestions.length >
+                                                0
+                                            ) {
+                                                setActiveSuggestionField(
+                                                    "code",
+                                                )
+                                            }
+                                        }}
+                                        onBlur={() => {
+
+                                            window.setTimeout(
+                                                () => {
+                                                    setActiveSuggestionField(
+                                                        null,
+                                                    )
+                                                },
+                                                150,
+                                            )
+                                        }}
+                                        onKeyDown={(
+                                            event,
+                                        ) => {
+
+                                            if (
+                                                event.key ===
+                                                "Enter"
+                                            ) {
+
+                                                event.preventDefault()
+
+                                                handleSearch()
+                                            }
+
+                                            if (
+                                                event.key ===
+                                                "Escape"
+                                            ) {
+
+                                                setActiveSuggestionField(
+                                                    null,
+                                                )
+                                            }
+                                        }}
+                                        placeholder="Search employee code..."
+                                        autoComplete="off"
+                                        className={
+                                            inputClassName
+                                        }
+                                    />
+
+
+                                    {employeeCode && (
+
+                                        <button
+                                            type="button"
+                                            onMouseDown={(
+                                                event,
+                                            ) =>
+                                                event.preventDefault()
+                                            }
+                                            onClick={() => {
+
+                                                setEmployeeCode(
+                                                    "",
+                                                )
+
+                                                setCodeSuggestions(
+                                                    [],
+                                                )
+
+                                                setActiveSuggestionField(
+                                                    null,
+                                                )
+                                            }}
+                                            className="absolute right-3 top-1/2 z-10 -translate-y-1/2 text-slate-400 hover:text-slate-700"
+                                            aria-label="Clear employee code"
+                                        >
+
+                                            <X className="h-4 w-4" />
+
+                                        </button>
+
+                                    )}
+
+
+                                    {/* Code suggestions */}
+
+                                    {activeSuggestionField ===
+                                        "code" &&
+                                        codeSuggestions.length >
+                                        0 && (
+
+                                            <div className="absolute left-0 right-0 top-[calc(100%+6px)] z-50 overflow-hidden rounded-xl border border-slate-200 bg-white shadow-xl">
+
+                                                <div className="border-b border-slate-100 bg-slate-50 px-3 py-2 text-[11px] font-semibold uppercase tracking-wide text-slate-400">
+                                                    Matching employees
+                                                </div>
+
+                                                {codeSuggestions.map(
+                                                    (
+                                                        employee,
+                                                    ) => (
+
+                                                        <button
+                                                            key={
+                                                                employee.id
+                                                            }
+                                                            type="button"
+                                                            onMouseDown={(
+                                                                event,
+                                                            ) =>
+                                                                event.preventDefault()
+                                                            }
+                                                            onClick={() =>
+                                                                selectEmployeeForCode(
+                                                                    employee,
+                                                                )
+                                                            }
+                                                            className="flex w-full items-center gap-3 border-b border-slate-100 px-3 py-3 text-left last:border-0 hover:bg-primary/[0.04]"
+                                                        >
+
+                                                            <span className="flex h-8 w-8 shrink-0 items-center justify-center rounded-lg bg-primary/10 text-primary">
+
+                                                                <UserRound className="h-4 w-4" />
+
+                                                            </span>
+
+
+                                                            <span className="min-w-0">
+
+                                                                <span className="block text-sm font-semibold text-slate-800">
+
+                                                                    {
+                                                                        employee.employeeCode
+                                                                    }
+
+                                                                </span>
+
+                                                                <span className="block truncate text-xs text-slate-500">
+
+                                                                    {
+                                                                        employee.name
+                                                                    }
+
+                                                                    {employee.designation
+                                                                        ? ` • ${employee.designation}`
+                                                                        : ""}
+
+                                                                </span>
+
+                                                            </span>
+
+                                                        </button>
+
+                                                    ),
+                                                )}
+
+                                            </div>
+
+                                        )}
+
+                                </div>
+
+                            </div>
+
+
+                            {/* Employee Name */}
+
+                            <div className="space-y-2">
+
+                                <Label
+                                    htmlFor="adviceEmployeeName"
+                                    className="text-xs font-semibold text-slate-600"
+                                >
+                                    Employee Name
+                                </Label>
+
+                                <div className="relative">
+
+                                    <Search className="pointer-events-none absolute left-3 top-1/2 z-10 h-4 w-4 -translate-y-1/2 text-slate-400" />
+
+
+                                    <Input
+                                        id="adviceEmployeeName"
+                                        value={
+                                            employeeName
+                                        }
+                                        onChange={(
+                                            event,
+                                        ) => {
+
+                                            const value =
+                                                event
+                                                    .target
+                                                    .value
+
+                                            setEmployeeName(
+                                                value,
+                                            )
+
+                                            setEmployeeCode(
+                                                "",
+                                            )
+
+                                            setCodeSuggestions(
+                                                [],
+                                            )
+
+                                            setActiveSuggestionField(
+                                                value.trim()
+                                                    .length >= 2
+                                                    ? "name"
+                                                    : null,
+                                            )
+
+                                            void loadSuggestions(
+                                                value,
+                                                "name",
+                                            )
+                                        }}
+                                        onFocus={() => {
+
+                                            if (
+                                                nameSuggestions.length >
+                                                0
+                                            ) {
+                                                setActiveSuggestionField(
+                                                    "name",
+                                                )
+                                            }
+                                        }}
+                                        onBlur={() => {
+
+                                            window.setTimeout(
+                                                () => {
+                                                    setActiveSuggestionField(
+                                                        null,
+                                                    )
+                                                },
+                                                150,
+                                            )
+                                        }}
+                                        onKeyDown={(
+                                            event,
+                                        ) => {
+
+                                            if (
+                                                event.key ===
+                                                "Enter"
+                                            ) {
+
+                                                event.preventDefault()
+
+                                                handleSearch()
+                                            }
+
+                                            if (
+                                                event.key ===
+                                                "Escape"
+                                            ) {
+
+                                                setActiveSuggestionField(
+                                                    null,
+                                                )
+                                            }
+                                        }}
+                                        placeholder="Search employee name..."
+                                        autoComplete="off"
+                                        className={
+                                            inputClassName
+                                        }
+                                    />
+
+
+                                    {employeeName && (
+
+                                        <button
+                                            type="button"
+                                            onMouseDown={(
+                                                event,
+                                            ) =>
+                                                event.preventDefault()
+                                            }
+                                            onClick={() => {
+
+                                                setEmployeeName(
+                                                    "",
+                                                )
+
+                                                setNameSuggestions(
+                                                    [],
+                                                )
+
+                                                setActiveSuggestionField(
+                                                    null,
+                                                )
+                                            }}
+                                            className="absolute right-3 top-1/2 z-10 -translate-y-1/2 text-slate-400 hover:text-slate-700"
+                                            aria-label="Clear employee name"
+                                        >
+
+                                            <X className="h-4 w-4" />
+
+                                        </button>
+
+                                    )}
+
+
+                                    {/* Name suggestions */}
+
+                                    {activeSuggestionField ===
+                                        "name" &&
+                                        nameSuggestions.length >
+                                        0 && (
+
+                                            <div className="absolute left-0 right-0 top-[calc(100%+6px)] z-50 overflow-hidden rounded-xl border border-slate-200 bg-white shadow-xl">
+
+                                                <div className="border-b border-slate-100 bg-slate-50 px-3 py-2 text-[11px] font-semibold uppercase tracking-wide text-slate-400">
+                                                    Matching employees
+                                                </div>
+
+                                                {nameSuggestions.map(
+                                                    (
+                                                        employee,
+                                                    ) => (
+
+                                                        <button
+                                                            key={
+                                                                employee.id
+                                                            }
+                                                            type="button"
+                                                            onMouseDown={(
+                                                                event,
+                                                            ) =>
+                                                                event.preventDefault()
+                                                            }
+                                                            onClick={() =>
+                                                                selectEmployeeForName(
+                                                                    employee,
+                                                                )
+                                                            }
+                                                            className="flex w-full items-center gap-3 border-b border-slate-100 px-3 py-3 text-left last:border-0 hover:bg-primary/[0.04]"
+                                                        >
+
+                                                            <span className="flex h-8 w-8 shrink-0 items-center justify-center rounded-lg bg-primary/10 text-primary">
+
+                                                                <UserRound className="h-4 w-4" />
+
+                                                            </span>
+
+
+                                                            <span className="min-w-0">
+
+                                                                <span className="block truncate text-sm font-semibold text-slate-800">
+
+                                                                    {
+                                                                        employee.name
+                                                                    }
+
+                                                                </span>
+
+                                                                <span className="block text-xs text-slate-500">
+
+                                                                    {
+                                                                        employee.employeeCode
+                                                                    }
+
+                                                                    {employee.designation
+                                                                        ? ` • ${employee.designation}`
+                                                                        : ""}
+
+                                                                </span>
+
+                                                            </span>
+
+                                                        </button>
+
+                                                    ),
+                                                )}
+
+                                            </div>
+
+                                        )}
+
+                                </div>
+
+                            </div>
+
+
+                            {/* Category */}
+
+                            <div className="space-y-2">
+
+                                <Label
+                                    htmlFor="adviceCategory"
+                                    className="text-xs font-semibold text-slate-600"
+                                >
+                                    Category
+                                </Label>
+
+                                <div className="relative">
+
+                                    <select
+                                        id="adviceCategory"
+                                        value={
+                                            categoryId
+                                        }
+                                        onChange={(event) => {
+
+                                            setCategoryId(
+                                                event.target.value,
+                                            )
+
+                                            setCurrentPage(
+                                                0,
+                                            )
+                                        }}
+                                        className={
+                                            selectClassName
+                                        }
                                     >
 
-                                        <X className="h-4 w-4" />
+                                        <option value="">
+                                            All Categories
+                                        </option>
 
-                                    </button>
+                                        {categories.map(
+                                            (
+                                                category,
+                                            ) => (
+
+                                                <option
+                                                    key={
+                                                        category.id
+                                                    }
+                                                    value={
+                                                        category.id
+                                                    }
+                                                >
+                                                    {
+                                                        category.name
+                                                    }
+                                                </option>
+
+                                            ),
+                                        )}
+
+                                    </select>
+
+                                    <ChevronDown className="pointer-events-none absolute right-3 top-1/2 h-4 w-4 -translate-y-1/2 text-slate-400" />
+
+                                </div>
+
+                            </div>
+
+
+                            {/* Bank */}
+
+                            <div className="space-y-2">
+
+                                <Label
+                                    htmlFor="adviceBank"
+                                    className="text-xs font-semibold text-slate-600"
+                                >
+                                    Bank
+                                </Label>
+
+                                <div className="relative">
+
+                                    <select
+                                        id="adviceBank"
+                                        value={
+                                            bankId
+                                        }
+                                        onChange={(event) => {
+
+                                            setBankId(
+                                                event.target.value,
+                                            )
+
+                                            setCurrentPage(
+                                                0,
+                                            )
+                                        }}
+                                        className={
+                                            selectClassName
+                                        }
+                                    >
+
+                                        <option value="">
+                                            All Banks
+                                        </option>
+
+                                        {banks.map(
+                                            (bank) => (
+
+                                                <option
+                                                    key={
+                                                        bank.id
+                                                    }
+                                                    value={
+                                                        bank.id
+                                                    }
+                                                >
+                                                    {
+                                                        bank.bankName
+                                                    }
+                                                </option>
+
+                                            ),
+                                        )}
+
+                                    </select>
+
+                                    <ChevronDown className="pointer-events-none absolute right-3 top-1/2 h-4 w-4 -translate-y-1/2 text-slate-400" />
+
+                                </div>
+
+                            </div>
+
+                        </div>
+
+
+                        {/* Filter Actions */}
+
+                        <div className="mt-6 flex justify-end border-t border-slate-100 pt-5">
+
+                            <div className="flex flex-wrap justify-end gap-2">
+
+                                <Button
+                                    type="button"
+                                    variant="ghost"
+                                    onClick={
+                                        clearFilters
+                                    }
+                                    disabled={
+                                        loading ||
+                                        refreshing
+                                    }
+                                    className="text-slate-600 hover:bg-slate-100"
+                                >
+
+                                    <X className="mr-2 h-4 w-4" />
+
+                                    Clear
+
+                                </Button>
+
+
+                                <Button
+                                    type="button"
+                                    onClick={
+                                        handleSearch
+                                    }
+                                    disabled={
+                                        loading ||
+                                        refreshing
+                                    }
+                                    className="shadow-sm"
+                                >
+
+                                    <Search className="mr-2 h-4 w-4" />
+
+                                    Search
+
+                                </Button>
+
+                            </div>
+
+                        </div>
+
+                    </div>
+
+                </section>
+
+
+                {/* -------------------------------------------------
+                    PAYMENT ADVICE RECORDS
+                ------------------------------------------------- */}
+
+                <section className="overflow-hidden rounded-2xl border border-slate-200 bg-white shadow-sm">
+
+                    {/* Records Header */}
+
+                    <div className="flex flex-col gap-3 border-b border-slate-100 px-5 py-4 md:flex-row md:items-center md:justify-between md:px-6">
+
+                        <div>
+
+                            <div className="flex items-center gap-2">
+
+                                <h3 className="text-sm font-semibold text-slate-900">
+                                    Payment Advice Records
+                                </h3>
+
+                                {refreshing && (
+
+                                    <span className="inline-flex items-center gap-1.5 rounded-full bg-primary/10 px-2.5 py-1 text-[11px] font-semibold text-primary">
+
+                                        <span className="h-1.5 w-1.5 animate-pulse rounded-full bg-primary" />
+
+                                        Updating
+
+                                    </span>
 
                                 )}
 
-
-                                {/* Name suggestions */}
-
-                                {activeSuggestionField ===
-                                    "name" &&
-                                    nameSuggestions.length >
-                                    0 && (
-
-                                        <div className="absolute left-0 right-0 top-[calc(100%+6px)] z-50 overflow-hidden rounded-xl border border-slate-200 bg-white shadow-xl">
-
-                                            <div className="border-b border-slate-100 bg-slate-50 px-3 py-2 text-[11px] font-semibold uppercase tracking-wide text-slate-400">
-                                                Matching employees
-                                            </div>
-
-                                            {nameSuggestions.map(
-                                                (
-                                                    employee,
-                                                ) => (
-
-                                                    <button
-                                                        key={
-                                                            employee.id
-                                                        }
-                                                        type="button"
-                                                        onMouseDown={(
-                                                            event,
-                                                        ) =>
-                                                            event.preventDefault()
-                                                        }
-                                                        onClick={() =>
-                                                            selectEmployeeForName(
-                                                                employee,
-                                                            )
-                                                        }
-                                                        className="flex w-full items-center gap-3 border-b border-slate-100 px-3 py-3 text-left last:border-0 hover:bg-primary/[0.04]"
-                                                    >
-
-                                                        <span className="flex h-8 w-8 shrink-0 items-center justify-center rounded-lg bg-primary/10 text-primary">
-
-                                                            <UserRound className="h-4 w-4" />
-
-                                                        </span>
-
-
-                                                        <span className="min-w-0">
-
-                                                            <span className="block truncate text-sm font-semibold text-slate-800">
-
-                                                                {
-                                                                    employee.name
-                                                                }
-
-                                                            </span>
-
-                                                            <span className="block text-xs text-slate-500">
-
-                                                                {
-                                                                    employee.employeeCode
-                                                                }
-
-                                                                {employee.designation
-                                                                    ? ` • ${employee.designation}`
-                                                                    : ""}
-
-                                                            </span>
-
-                                                        </span>
-
-                                                    </button>
-
-                                                ),
-                                            )}
-
-                                        </div>
-
-                                    )}
-
                             </div>
 
-                        </div>
 
+                            <p className="mt-1 text-xs text-slate-500">
 
-                        {/* Category */}
+                                {totalElements} payment advice record
+                                {totalElements === 1
+                                    ? ""
+                                    : "s"} found
 
-                        <div className="space-y-2">
-
-                            <Label
-                                htmlFor="adviceCategory"
-                                className="text-xs font-semibold text-slate-600"
-                            >
-                                Category
-                            </Label>
-
-                            <div className="relative">
-
-                                <select
-                                    id="adviceCategory"
-                                    value={
-                                        categoryId
-                                    }
-                                    onChange={(event) => {
-
-                                        setCategoryId(
-                                            event.target.value,
-                                        )
-
-                                        setCurrentPage(
-                                            0,
-                                        )
-                                    }}
-                                    className={
-                                        selectClassName
-                                    }
-                                >
-
-                                    <option value="">
-                                        All Categories
-                                    </option>
-
-                                    {categories.map(
-                                        (
-                                            category,
-                                        ) => (
-
-                                            <option
-                                                key={
-                                                    category.id
-                                                }
-                                                value={
-                                                    category.id
-                                                }
-                                            >
-                                                {
-                                                    category.name
-                                                }
-                                            </option>
-
-                                        ),
-                                    )}
-
-                                </select>
-
-                                <ChevronDown className="pointer-events-none absolute right-3 top-1/2 h-4 w-4 -translate-y-1/2 text-slate-400" />
-
-                            </div>
-
-                        </div>
-
-
-                        {/* Bank */}
-
-                        <div className="space-y-2">
-
-                            <Label
-                                htmlFor="adviceBank"
-                                className="text-xs font-semibold text-slate-600"
-                            >
-                                Bank
-                            </Label>
-
-                            <div className="relative">
-
-                                <select
-                                    id="adviceBank"
-                                    value={
-                                        bankId
-                                    }
-                                    onChange={(event) => {
-
-                                        setBankId(
-                                            event.target.value,
-                                        )
-
-                                        setCurrentPage(
-                                            0,
-                                        )
-                                    }}
-                                    className={
-                                        selectClassName
-                                    }
-                                >
-
-                                    <option value="">
-                                        All Banks
-                                    </option>
-
-                                    {banks.map(
-                                        (bank) => (
-
-                                            <option
-                                                key={
-                                                    bank.id
-                                                }
-                                                value={
-                                                    bank.id
-                                                }
-                                            >
-                                                {
-                                                    bank.bankName
-                                                }
-                                            </option>
-
-                                        ),
-                                    )}
-
-                                </select>
-
-                                <ChevronDown className="pointer-events-none absolute right-3 top-1/2 h-4 w-4 -translate-y-1/2 text-slate-400" />
-
-                            </div>
-
-                        </div>
-
-                    </div>
-
-
-                    {/* Filter Actions */}
-
-                    <div className="mt-6 flex justify-end border-t border-slate-100 pt-5">
-
-                        <div className="flex flex-wrap justify-end gap-2">
-
-                            <Button
-                                type="button"
-                                variant="ghost"
-                                onClick={
-                                    clearFilters
-                                }
-                                disabled={
-                                    loading ||
-                                    refreshing
-                                }
-                                className="text-slate-600 hover:bg-slate-100"
-                            >
-
-                                <X className="mr-2 h-4 w-4" />
-
-                                Clear
-
-                            </Button>
-
-
-                            <Button
-                                type="button"
-                                onClick={
-                                    handleSearch
-                                }
-                                disabled={
-                                    loading ||
-                                    refreshing
-                                }
-                                className="shadow-sm"
-                            >
-
-                                <Search className="mr-2 h-4 w-4" />
-
-                                Search
-
-                            </Button>
-
-                        </div>
-
-                    </div>
-
-                </div>
-
-            </section>
-
-
-            {/* -------------------------------------------------
-                PAYMENT ADVICE RECORDS
-            ------------------------------------------------- */}
-
-            <section className="overflow-hidden rounded-2xl border border-slate-200 bg-white shadow-sm">
-
-                {/* Records Header */}
-
-                <div className="flex flex-col gap-3 border-b border-slate-100 px-5 py-4 md:flex-row md:items-center md:justify-between md:px-6">
-
-                    <div>
-
-                        <div className="flex items-center gap-2">
-
-                            <h3 className="text-sm font-semibold text-slate-900">
-                                Payment Advice Records
-                            </h3>
-
-                            {refreshing && (
-
-                                <span className="inline-flex items-center gap-1.5 rounded-full bg-primary/10 px-2.5 py-1 text-[11px] font-semibold text-primary">
-
-                                    <span className="h-1.5 w-1.5 animate-pulse rounded-full bg-primary" />
-
-                                    Updating
-
-                                </span>
-
-                            )}
-
-                        </div>
-
-
-                        <p className="mt-1 text-xs text-slate-500">
-
-                            {totalElements} payment advice record
-                            {totalElements === 1
-                                ? ""
-                                : "s"} found
-
-                        </p>
-
-                    </div>
-
-
-                    <div className="flex items-center gap-2 rounded-lg bg-slate-50 px-3 py-2 text-xs font-medium text-slate-500">
-
-                        <FileText className="h-3.5 w-3.5" />
-
-                        Page{" "}
-
-                        {totalPages === 0
-                            ? 0
-                            : currentPage + 1}
-
-                        {" "}of{" "}
-
-                        {totalPages}
-
-                    </div>
-
-                </div>
-
-
-                {/* Records Content */}
-
-                <div className="p-3 md:p-4">
-
-                    {loading ? (
-
-                        <div className="flex min-h-[260px] flex-col items-center justify-center gap-3 text-center">
-
-                            <div className="h-8 w-8 animate-spin rounded-full border-2 border-slate-200 border-t-primary" />
-
-                            <p className="text-sm font-medium text-slate-700">
-                                Loading payment advice
                             </p>
 
                         </div>
 
-                    ) : records.length === 0 ? (
 
-                        <div className="flex min-h-[260px] flex-col items-center justify-center text-center">
+                        <div className="flex items-center gap-2 rounded-lg bg-slate-50 px-3 py-2 text-xs font-medium text-slate-500">
 
-                            <div className="flex h-12 w-12 items-center justify-center rounded-2xl bg-slate-100 text-slate-400">
+                            <FileText className="h-3.5 w-3.5" />
 
-                                <FileText className="h-5 w-5" />
+                            Page{" "}
 
-                            </div>
+                            {totalPages === 0
+                                ? 0
+                                : currentPage + 1}
 
+                            {" "}of{" "}
 
-                            <p className="mt-4 text-sm font-semibold text-slate-700">
-                                No payment advice found
-                            </p>
-
-
-                            <p className="mt-1 max-w-sm text-xs leading-5 text-slate-400">
-                                Try changing the selected filters or search for another employee.
-                            </p>
+                            {totalPages}
 
                         </div>
 
-                    ) : (
-
-                        <>
-
-                            <div className="overflow-x-auto rounded-xl border border-slate-100">
-
-                                <table className="w-full min-w-[1150px] text-sm">
-
-                                    <thead>
-
-                                    <tr className="bg-slate-50 text-slate-500">
-
-                                        <th className="px-4 py-3.5 text-left text-xs font-semibold uppercase tracking-wide">
-                                            Employee Code
-                                        </th>
-
-                                        <th className="px-4 py-3.5 text-left text-xs font-semibold uppercase tracking-wide">
-                                            Employee Name
-                                        </th>
-
-                                        <th className="px-4 py-3.5 text-left text-xs font-semibold uppercase tracking-wide">
-                                            Period
-                                        </th>
-
-                                        <th className="px-4 py-3.5 text-left text-xs font-semibold uppercase tracking-wide">
-                                            Bank
-                                        </th>
-
-                                        <th className="px-4 py-3.5 text-left text-xs font-semibold uppercase tracking-wide">
-                                            Account Number
-                                        </th>
-
-                                        <th className="px-4 py-3.5 text-left text-xs font-semibold uppercase tracking-wide">
-                                            IFSC
-                                        </th>
-
-                                        <th className="px-4 py-3.5 text-left text-xs font-semibold uppercase tracking-wide">
-                                            Category
-                                        </th>
-
-                                        <th className="px-4 py-3.5 text-right text-xs font-semibold uppercase tracking-wide">
-                                            Net Payment
-                                        </th>
-
-                                        <th className="print:hidden px-4 py-3.5 text-left text-xs font-semibold uppercase tracking-wide">
-                                            Status
-                                        </th>
-
-                                    </tr>
-
-                                    </thead>
+                    </div>
 
 
-                                    <tbody>
+                    {/* Records Content */}
 
-                                    {records.map(
-                                        (record) => (
+                    <div className="p-3 md:p-4">
 
-                                            <tr
-                                                key={
-                                                    record.paymentId
-                                                }
-                                                className="border-t border-slate-100 transition-colors hover:bg-slate-50/70"
-                                            >
+                        {loading ? (
 
-                                                <td className="px-4 py-4">
+                            <div className="flex min-h-[260px] flex-col items-center justify-center gap-3 text-center">
 
-                                                    <div className="font-semibold text-slate-800">
+                                <div className="h-8 w-8 animate-spin rounded-full border-2 border-slate-200 border-t-primary" />
+
+                                <p className="text-sm font-medium text-slate-700">
+                                    Loading payment advice
+                                </p>
+
+                            </div>
+
+                        ) : records.length === 0 ? (
+
+                            <div className="flex min-h-[260px] flex-col items-center justify-center text-center">
+
+                                <div className="flex h-12 w-12 items-center justify-center rounded-2xl bg-slate-100 text-slate-400">
+
+                                    <FileText className="h-5 w-5" />
+
+                                </div>
+
+
+                                <p className="mt-4 text-sm font-semibold text-slate-700">
+                                    No payment advice found
+                                </p>
+
+
+                                <p className="mt-1 max-w-sm text-xs leading-5 text-slate-400">
+                                    Try changing the selected filters or search for another employee.
+                                </p>
+
+                            </div>
+
+                        ) : (
+
+                            <>
+
+                                <div className="overflow-x-auto rounded-xl border border-slate-100">
+
+                                    <table className="w-full min-w-[1250px] text-sm">
+
+                                        <thead>
+
+                                        <tr className="bg-slate-50 text-slate-500">
+
+                                            <th className="px-4 py-3.5 text-left text-xs font-semibold uppercase tracking-wide">
+                                                Employee Code
+                                            </th>
+
+                                            <th className="px-4 py-3.5 text-left text-xs font-semibold uppercase tracking-wide">
+                                                Employee Name
+                                            </th>
+
+                                            {/* PAN */}
+
+                                            <th className="px-4 py-3.5 text-left text-xs font-semibold uppercase tracking-wide">
+                                                PAN
+                                            </th>
+
+                                            <th className="px-4 py-3.5 text-left text-xs font-semibold uppercase tracking-wide">
+                                                Period
+                                            </th>
+
+                                            <th className="px-4 py-3.5 text-left text-xs font-semibold uppercase tracking-wide">
+                                                Bank
+                                            </th>
+
+                                            <th className="px-4 py-3.5 text-left text-xs font-semibold uppercase tracking-wide">
+                                                Account Number
+                                            </th>
+
+                                            <th className="px-4 py-3.5 text-left text-xs font-semibold uppercase tracking-wide">
+                                                IFSC
+                                            </th>
+
+                                            <th className="px-4 py-3.5 text-left text-xs font-semibold uppercase tracking-wide">
+                                                Category
+                                            </th>
+
+                                            <th className="px-4 py-3.5 text-right text-xs font-semibold uppercase tracking-wide">
+                                                Net Payment
+                                            </th>
+
+                                            <th className="print:hidden px-4 py-3.5 text-left text-xs font-semibold uppercase tracking-wide">
+                                                Status
+                                            </th>
+
+                                        </tr>
+
+                                        </thead>
+
+
+                                        <tbody>
+
+                                        {records.map(
+                                            (record) => (
+
+                                                <tr
+                                                    key={
+                                                        record.paymentId
+                                                    }
+                                                    className="border-t border-slate-100 transition-colors hover:bg-slate-50/70"
+                                                >
+
+                                                    {/* Employee Code */}
+
+                                                    <td className="px-4 py-4">
+
+                                                        <div className="font-semibold text-slate-800">
+                                                            {
+                                                                record.employeeCode
+                                                            }
+                                                        </div>
+
+                                                    </td>
+
+
+                                                    {/* Employee Name */}
+
+                                                    <td className="px-4 py-4">
+
+                                                        <div className="mt-0.5 text-xs text-slate-500">
+                                                            {
+                                                                record.employeeName
+                                                            }
+                                                        </div>
+
+                                                    </td>
+
+
+                                                    {/* PAN */}
+
+                                                    <td className="px-4 py-4">
+
+                                                        <div className="font-small uppercase tracking-wide text-slate-700">
+                                                            {
+                                                                record.panNumber
+                                                            }
+                                                        </div>
+
+                                                    </td>
+
+
+                                                    {/* Period */}
+
+                                                    <td className="px-4 py-4 font-medium text-slate-600">
+
+                                                        {formatPeriod(
+                                                            record.month,
+                                                            record.year,
+                                                        )}
+
+                                                    </td>
+
+
+                                                    {/* Bank */}
+
+                                                    <td className="px-4 py-4 text-slate-600">
+
                                                         {
-                                                            record.employeeCode
+                                                            record.bankName ??
+                                                            "-"
                                                         }
-                                                    </div>
 
-                                                </td>
-
-                                                <td className="px-4 py-4">
+                                                    </td>
 
 
-                                                    <div className="mt-0.5 text-xs text-slate-500">
+                                                    {/* Account Number */}
+
+                                                    <td className="px-4 py-4 font-mono text-xs text-slate-600">
+
                                                         {
-                                                            record.employeeName
+                                                            record.accountNumber
                                                         }
-                                                    </div>
 
-                                                </td>
-
-
-                                                <td className="px-4 py-4 font-medium text-slate-600">
-
-                                                    {formatPeriod(
-                                                        record.month,
-                                                        record.year,
-                                                    )}
-
-                                                </td>
+                                                    </td>
 
 
-                                                <td className="px-4 py-4 text-slate-600">
+                                                    {/* IFSC */}
 
-                                                    {
-                                                        record.bankName
-                                                    }
+                                                    <td className="px-4 py-4 font-mono text-xs font-medium text-slate-600">
 
-                                                </td>
+                                                        {
+                                                            record.ifscCode ||
+                                                            "-"
+                                                        }
 
-
-                                                <td className="px-4 py-4 font-mono text-xs text-slate-600">
-
-                                                    {
-                                                        record.accountNumber
-                                                    }
-
-                                                </td>
+                                                    </td>
 
 
-                                                <td className="px-4 py-4 font-mono text-xs font-medium text-slate-600">
+                                                    {/* Category */}
 
-                                                    {
-                                                        record.ifscCode
-                                                    }
-
-                                                </td>
-
-
-                                                <td className="px-4 py-4">
+                                                    <td className="px-4 py-4">
 
                                                         <span className="inline-flex rounded-lg bg-slate-100 px-2.5 py-1.5 text-xs font-medium text-slate-600">
 
@@ -1749,10 +1792,12 @@ return (
 
                                                         </span>
 
-                                                </td>
+                                                    </td>
 
 
-                                                <td className="px-4 py-4 text-right">
+                                                    {/* Net Payment */}
+
+                                                    <td className="px-4 py-4 text-right">
 
                                                         <span className="inline-flex rounded-lg bg-emerald-50 px-2.5 py-1.5 font-bold tabular-nums text-emerald-700">
 
@@ -1762,10 +1807,12 @@ return (
 
                                                         </span>
 
-                                                </td>
+                                                    </td>
 
 
-                                                <td className="payment-advice-print-hide px-4 py-4">
+                                                    {/* Internal Status */}
+
+                                                    <td className="payment-advice-print-hide px-4 py-4">
 
                                                         <span className="inline-flex items-center gap-1.5 rounded-full bg-slate-100 px-2.5 py-1 text-xs font-medium text-slate-600">
 
@@ -1775,122 +1822,122 @@ return (
 
                                                         </span>
 
-                                                </td>
+                                                    </td>
 
-                                            </tr>
+                                                </tr>
 
-                                        ),
-                                    )}
+                                            ),
+                                        )}
 
-                                    </tbody>
+                                        </tbody>
 
-                                </table>
-
-                            </div>
-
-
-                            {/* Pagination */}
-
-                            <div className="flex flex-col gap-4 px-1 pt-5 sm:flex-row sm:items-center sm:justify-between">
-
-                                <p className="text-xs text-slate-500">
-
-                                    Showing{" "}
-
-                                    <span className="font-semibold text-slate-700">
-                                        {firstRecord}
-                                    </span>
-
-                                    {" – "}
-
-                                    <span className="font-semibold text-slate-700">
-                                        {lastRecord}
-                                    </span>
-
-                                    {" "}of{" "}
-
-                                    <span className="font-semibold text-slate-700">
-                                        {totalElements}
-                                    </span>
-
-                                    {" "}payment advice records
-
-                                </p>
-
-
-                                <div className="flex items-center justify-end gap-2">
-
-                                    <Button
-                                        type="button"
-                                        variant="outline"
-                                        size="sm"
-                                        onClick={
-                                            goToPreviousPage
-                                        }
-                                        disabled={
-                                            currentPage ===
-                                            0 ||
-                                            loading ||
-                                            refreshing
-                                        }
-                                        className="border-slate-200 bg-white"
-                                    >
-
-                                        <ChevronLeft className="mr-1 h-4 w-4" />
-
-                                        Previous
-
-                                    </Button>
-
-
-                                    <span className="min-w-[90px] rounded-lg bg-slate-50 px-3 py-2 text-center text-xs font-medium text-slate-600">
-
-                                        Page{" "}
-
-                                        {currentPage + 1}
-
-                                        {" "}of{" "}
-
-                                        {totalPages}
-
-                                    </span>
-
-
-                                    <Button
-                                        type="button"
-                                        variant="outline"
-                                        size="sm"
-                                        onClick={
-                                            goToNextPage
-                                        }
-                                        disabled={
-                                            currentPage >=
-                                            totalPages - 1 ||
-                                            loading ||
-                                            refreshing
-                                        }
-                                        className="border-slate-200 bg-white"
-                                    >
-
-                                        Next
-
-                                        <ChevronRight className="ml-1 h-4 w-4" />
-
-                                    </Button>
+                                    </table>
 
                                 </div>
 
-                            </div>
 
-                        </>
+                                {/* Pagination */}
 
-                    )}
+                                <div className="flex flex-col gap-4 px-1 pt-5 sm:flex-row sm:items-center sm:justify-between">
 
-                </div>
+                                    <p className="text-xs text-slate-500">
 
-            </section>
+                                        Showing{" "}
 
-        </div>
-    </>
-)
+                                        <span className="font-semibold text-slate-700">
+                                            {firstRecord}
+                                        </span>
+
+                                        {" – "}
+
+                                        <span className="font-semibold text-slate-700">
+                                            {lastRecord}
+                                        </span>
+
+                                        {" "}of{" "}
+
+                                        <span className="font-semibold text-slate-700">
+                                            {totalElements}
+                                        </span>
+
+                                        {" "}payment advice records
+
+                                    </p>
+
+
+                                    <div className="flex items-center justify-end gap-2">
+
+                                        <Button
+                                            type="button"
+                                            variant="outline"
+                                            size="sm"
+                                            onClick={
+                                                goToPreviousPage
+                                            }
+                                            disabled={
+                                                currentPage ===
+                                                0 ||
+                                                loading ||
+                                                refreshing
+                                            }
+                                            className="border-slate-200 bg-white"
+                                        >
+
+                                            <ChevronLeft className="mr-1 h-4 w-4" />
+
+                                            Previous
+
+                                        </Button>
+
+
+                                        <span className="min-w-[90px] rounded-lg bg-slate-50 px-3 py-2 text-center text-xs font-medium text-slate-600">
+
+                                            Page{" "}
+
+                                            {currentPage + 1}
+
+                                            {" "}of{" "}
+
+                                            {totalPages}
+
+                                        </span>
+
+
+                                        <Button
+                                            type="button"
+                                            variant="outline"
+                                            size="sm"
+                                            onClick={
+                                                goToNextPage
+                                            }
+                                            disabled={
+                                                currentPage >=
+                                                totalPages - 1 ||
+                                                loading ||
+                                                refreshing
+                                            }
+                                            className="border-slate-200 bg-white"
+                                        >
+
+                                            Next
+
+                                            <ChevronRight className="ml-1 h-4 w-4" />
+
+                                        </Button>
+
+                                    </div>
+
+                                </div>
+
+                            </>
+
+                        )}
+
+                    </div>
+
+                </section>
+
+            </div>
+        </>
+    )
 }
