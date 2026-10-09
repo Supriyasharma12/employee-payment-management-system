@@ -20,7 +20,8 @@ public class PaymentAdviceExcelExporter {
              ByteArrayOutputStream outputStream =
                      new ByteArrayOutputStream()) {
 
-            Sheet sheet = workbook.createSheet("Payment Advice");
+            Sheet sheet =
+                    workbook.createSheet("Payment Advice");
 
             // ---------------------------------------------------------
             // HEADER STYLE
@@ -37,7 +38,7 @@ public class PaymentAdviceExcelExporter {
             headerStyle.setFont(headerFont);
 
             // ---------------------------------------------------------
-            // CURRENCY STYLE
+            // AMOUNT STYLE
             // ---------------------------------------------------------
 
             CellStyle amountStyle =
@@ -50,22 +51,19 @@ public class PaymentAdviceExcelExporter {
             );
 
             // ---------------------------------------------------------
-            // HEADER ROW
+            // HEADERS
             // ---------------------------------------------------------
-
-            Row header = sheet.createRow(0);
 
             String[] headers = {
                     "Employee Code",
                     "Employee Name",
-                    "PAN",
-                    "Period",
                     "Bank Name",
                     "Account Number",
                     "IFSC Code",
-                    "Category",
                     "Net Payment"
             };
+
+            Row header = sheet.createRow(0);
 
             for (int i = 0; i < headers.length; i++) {
 
@@ -77,7 +75,7 @@ public class PaymentAdviceExcelExporter {
             }
 
             // ---------------------------------------------------------
-            // DATA ROWS
+            // DATA
             // ---------------------------------------------------------
 
             int rowNumber = 1;
@@ -108,33 +106,10 @@ public class PaymentAdviceExcelExporter {
                 );
 
                 // -----------------------------------------------------
-                // PAN
-                // -----------------------------------------------------
-
-                row.createCell(2).setCellValue(
-                        payment.panNumber() != null
-                                ? payment.panNumber()
-                                : ""
-                );
-
-                // -----------------------------------------------------
-                // Period
-                // -----------------------------------------------------
-
-                String period =
-                        String.format(
-                                "%02d/%d",
-                                payment.month(),
-                                payment.year()
-                        );
-
-                row.createCell(3).setCellValue(period);
-
-                // -----------------------------------------------------
                 // Bank Name
                 // -----------------------------------------------------
 
-                row.createCell(4).setCellValue(
+                row.createCell(2).setCellValue(
                         payment.bankName() != null
                                 ? payment.bankName()
                                 : ""
@@ -143,10 +118,10 @@ public class PaymentAdviceExcelExporter {
                 // -----------------------------------------------------
                 // Account Number
                 // -----------------------------------------------------
-                // Keep this as text so that leading zeros are preserved.
+                // Keep this as text so leading zeros are preserved.
 
                 Cell accountNumberCell =
-                        row.createCell(5);
+                        row.createCell(3);
 
                 accountNumberCell.setCellValue(
                         payment.accountNumber() != null
@@ -159,7 +134,7 @@ public class PaymentAdviceExcelExporter {
                 // -----------------------------------------------------
 
                 Cell ifscCell =
-                        row.createCell(6);
+                        row.createCell(4);
 
                 ifscCell.setCellValue(
                         payment.ifscCode() != null
@@ -168,21 +143,11 @@ public class PaymentAdviceExcelExporter {
                 );
 
                 // -----------------------------------------------------
-                // Category
-                // -----------------------------------------------------
-
-                row.createCell(7).setCellValue(
-                        payment.categoryName() != null
-                                ? payment.categoryName()
-                                : ""
-                );
-
-                // -----------------------------------------------------
                 // Net Payment
                 // -----------------------------------------------------
 
                 Cell netPaymentCell =
-                        row.createCell(8);
+                        row.createCell(5);
 
                 BigDecimal netPayment =
                         payment.netPayment();
@@ -215,7 +180,7 @@ public class PaymentAdviceExcelExporter {
             }
 
             // ---------------------------------------------------------
-            // WRITE EXCEL FILE
+            // WRITE WORKBOOK
             // ---------------------------------------------------------
 
             workbook.write(outputStream);

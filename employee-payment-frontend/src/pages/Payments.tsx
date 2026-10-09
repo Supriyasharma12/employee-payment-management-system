@@ -557,6 +557,88 @@ export default function Payments() {
         input?.focus()
     }
 
+    const handleSaveSingle = async (employeeId: number) => {
+        setErrorMessage("")
+        setSuccessMessage("")
+
+        if (!selectedPaymentPeriodId) {
+            setErrorMessage("Please select a payment period.")
+            return
+        }
+
+        if (!paymentDate) {
+            setErrorMessage("Please select a payment date.")
+            return
+        }
+
+        const draft = drafts[employeeId] ?? emptyDraft()
+
+        if (getNet(draft) < 0) {
+            window.alert(
+                "Net Payment cannot be negative. Please reduce the deductions.",
+            )
+            return
+        }
+
+        const employee = employees.find(
+            (item) => item.id === employeeId,
+        )
+
+        if (!employee) {
+            setErrorMessage("Employee not found.")
+            return
+        }
+
+        try {
+            setSaving(true)
+
+            await createPayment({
+                employeeId,
+                paymentPeriodId: Number(
+                    selectedPaymentPeriodId,
+                ),
+                paymentDate,
+                runningTa: toAmount(draft.runningTa),
+                fixedTa: toAmount(draft.fixedTa),
+                other: toAmount(draft.other),
+                miscellaneous: toAmount(
+                    draft.miscellaneous,
+                ),
+                advanceTa: toAmount(
+                    draft.advanceTa,
+                ),
+                advanceOther: toAmount(
+                    draft.advanceOther,
+                ),
+            })
+
+            setDirtyIds((current) => {
+                const next = new Set(current)
+                next.delete(employeeId)
+                return next
+            })
+
+            await loadPaymentsForSelectedPeriod(
+                selectedPaymentPeriodId,
+            )
+
+            setSuccessMessage(
+                `Payment saved successfully for ${employee.name} (${employee.employeeCode}).`,
+            )
+        } catch (error) {
+            console.error(error)
+
+            setErrorMessage(
+                getApiErrorMessage(
+                    error,
+                    "Failed to save payment.",
+                ),
+            )
+        } finally {
+            setSaving(false)
+        }
+    }
+
     const cancelEditing = (employeeId: number) => {
         const existing = existingPayments[employeeId]
 
@@ -1699,7 +1781,6 @@ export default function Payments() {
                                                         "-"
                                                     }
                                                 </td>
-
                                                 <td className="border-l border-slate-100 px-2 py-2">
                                                     <Input
                                                         data-payment-entry={employee.id}
@@ -1712,6 +1793,12 @@ export default function Payments() {
                                                                 event.target.value,
                                                             )
                                                         }
+                                                        onKeyDown={(event) => {
+                                                            if (event.key === "Enter") {
+                                                                event.preventDefault()
+                                                                void handleSaveSingle(employee.id)
+                                                            }
+                                                        }}
                                                         inputMode="decimal"
                                                         className="h-9 w-[105px] rounded-lg border-slate-200 bg-white px-2 text-right tabular-nums"
                                                         placeholder="0.00"
@@ -1729,6 +1816,12 @@ export default function Payments() {
                                                                 event.target.value,
                                                             )
                                                         }
+                                                        onKeyDown={(event) => {
+                                                            if (event.key === "Enter") {
+                                                                event.preventDefault()
+                                                                void handleSaveSingle(employee.id)
+                                                            }
+                                                        }}
                                                         inputMode="decimal"
                                                         className="h-9 w-[105px] rounded-lg border-slate-200 bg-white px-2 text-right tabular-nums"
                                                         placeholder="0.00"
@@ -1746,6 +1839,12 @@ export default function Payments() {
                                                                 event.target.value,
                                                             )
                                                         }
+                                                        onKeyDown={(event) => {
+                                                            if (event.key === "Enter") {
+                                                                event.preventDefault()
+                                                                void handleSaveSingle(employee.id)
+                                                            }
+                                                        }}
                                                         inputMode="decimal"
                                                         className="h-9 w-[105px] rounded-lg border-slate-200 bg-white px-2 text-right tabular-nums"
                                                         placeholder="0.00"
@@ -1767,6 +1866,12 @@ export default function Payments() {
                                                                 event.target.value,
                                                             )
                                                         }
+                                                        onKeyDown={(event) => {
+                                                            if (event.key === "Enter") {
+                                                                event.preventDefault()
+                                                                void handleSaveSingle(employee.id)
+                                                            }
+                                                        }}
                                                         inputMode="decimal"
                                                         className="h-9 w-[105px] rounded-lg border-slate-200 bg-white px-2 text-right tabular-nums"
                                                         placeholder="0.00"
@@ -1784,6 +1889,12 @@ export default function Payments() {
                                                                 event.target.value,
                                                             )
                                                         }
+                                                        onKeyDown={(event) => {
+                                                            if (event.key === "Enter") {
+                                                                event.preventDefault()
+                                                                void handleSaveSingle(employee.id)
+                                                            }
+                                                        }}
                                                         inputMode="decimal"
                                                         className="h-9 w-[105px] rounded-lg border-slate-200 bg-white px-2 text-right tabular-nums"
                                                         placeholder="0.00"
@@ -1801,6 +1912,12 @@ export default function Payments() {
                                                                 event.target.value,
                                                             )
                                                         }
+                                                        onKeyDown={(event) => {
+                                                            if (event.key === "Enter") {
+                                                                event.preventDefault()
+                                                                void handleSaveSingle(employee.id)
+                                                            }
+                                                        }}
                                                         inputMode="decimal"
                                                         className="h-9 w-[105px] rounded-lg border-slate-200 bg-white px-2 text-right tabular-nums"
                                                         placeholder="0.00"
@@ -1832,20 +1949,20 @@ export default function Payments() {
                                                 <td className="w-[105px] px-3 py-3 align-middle">
                                                     {existing?.status === "APPROVED" ? (
                                                         <span className="inline-flex rounded-md bg-emerald-50 px-2 py-1 text-[11px] font-semibold uppercase tracking-wide text-emerald-700">
-                                                            Approved
-                                                        </span>
+            Approved
+        </span>
                                                     ) : existing?.status === "DRAFT" ? (
                                                         <span className="inline-flex rounded-md bg-amber-50 px-2 py-1 text-[11px] font-semibold uppercase tracking-wide text-amber-700">
-                                                            Draft
-                                                        </span>
-                                                    ) : dirty ? (
+            Draft
+        </span>
+                                                    ) : dirtyIds.has(employee.id) ? (
                                                         <span className="inline-flex rounded-md bg-sky-50 px-2 py-1 text-[11px] font-semibold uppercase tracking-wide text-sky-700">
-                                                            Unsaved
-                                                        </span>
+            Unsaved
+        </span>
                                                     ) : (
                                                         <span className="inline-flex rounded-md bg-slate-100 px-2 py-1 text-[11px] font-semibold uppercase tracking-wide text-slate-600">
-                                                            Pending
-                                                        </span>
+            Pending
+        </span>
                                                     )}
                                                 </td>
 
@@ -1870,8 +1987,13 @@ export default function Payments() {
                                                                     <Button
                                                                         type="button"
                                                                         size="sm"
-                                                                        onClick={() => void handleUpdate(employee.id)}
-                                                                        disabled={saving || getNet(draft) < 0}
+                                                                        onClick={() =>
+                                                                            void handleUpdate(employee.id)
+                                                                        }
+                                                                        disabled={
+                                                                            saving ||
+                                                                            getNet(draft) < 0
+                                                                        }
                                                                         className="h-8 min-w-[78px] rounded-md bg-slate-100 px-2.5 font-medium text-slate-700 shadow-none hover:bg-slate-200"
                                                                     >
                                                                         {updatingIds.has(employee.id) ? (
@@ -1891,7 +2013,9 @@ export default function Payments() {
                                                                         type="button"
                                                                         variant="outline"
                                                                         size="sm"
-                                                                        onClick={() => cancelEditing(employee.id)}
+                                                                        onClick={() =>
+                                                                            cancelEditing(employee.id)
+                                                                        }
                                                                         disabled={saving}
                                                                         className="h-8 min-w-[78px] rounded-md border-slate-200 bg-white px-2.5 text-slate-600 shadow-none hover:bg-slate-50"
                                                                     >
@@ -1905,7 +2029,9 @@ export default function Payments() {
                                                                         type="button"
                                                                         variant="outline"
                                                                         size="sm"
-                                                                        onClick={() => startEditing(employee.id)}
+                                                                        onClick={() =>
+                                                                            startEditing(employee.id)
+                                                                        }
                                                                         disabled={saving}
                                                                         className="h-8 min-w-[68px] rounded-md border-slate-200 bg-slate-50 px-2.5 text-slate-600 shadow-none hover:bg-slate-100"
                                                                     >
@@ -1916,8 +2042,13 @@ export default function Payments() {
                                                                     <Button
                                                                         type="button"
                                                                         size="sm"
-                                                                        onClick={() => void handleApprove(employee.id)}
-                                                                        disabled={saving || getNet(draft) < 0}
+                                                                        onClick={() =>
+                                                                            void handleApprove(employee.id)
+                                                                        }
+                                                                        disabled={
+                                                                            saving ||
+                                                                            getNet(draft) < 0
+                                                                        }
                                                                         className="h-8 min-w-[82px] rounded-md border border-emerald-200 bg-emerald-50 px-2.5 font-medium text-emerald-700 shadow-none hover:bg-emerald-100"
                                                                     >
                                                                         <Check className="mr-1.5 h-4 w-4" />
@@ -1926,13 +2057,42 @@ export default function Payments() {
                                                                 </>
                                                             )}
                                                         </div>
+                                                    ) : dirtyIds.has(employee.id) ? (
+                                                        <div className="flex items-center justify-start">
+                                                            <Button
+                                                                type="button"
+                                                                size="sm"
+                                                                onClick={() =>
+                                                                    void handleSaveSingle(employee.id)
+                                                                }
+                                                                disabled={
+                                                                    saving ||
+                                                                    getNet(draft) < 0
+                                                                }
+                                                                className="h-8 min-w-[76px] rounded-md bg-blue-50 px-2.5 font-medium text-blue-700 shadow-none hover:bg-blue-100"
+                                                            >
+                                                                {saving ? (
+                                                                    <>
+                                                                        <Loader2 className="mr-1.5 h-4 w-4 animate-spin" />
+                                                                        Saving
+                                                                    </>
+                                                                ) : (
+                                                                    <>
+                                                                        <Save className="mr-1.5 h-4 w-4" />
+                                                                        Save
+                                                                    </>
+                                                                )}
+                                                            </Button>
+                                                        </div>
                                                     ) : (
                                                         <div className="flex items-center justify-start">
                                                             <Button
                                                                 type="button"
                                                                 variant="outline"
                                                                 size="sm"
-                                                                onClick={() => startNewEntry(employee.id)}
+                                                                onClick={() =>
+                                                                    startNewEntry(employee.id)
+                                                                }
                                                                 disabled={saving}
                                                                 className="h-8 min-w-[76px] rounded-md border-blue-200 bg-blue-50 px-2.5 font-medium text-blue-700 shadow-none hover:bg-blue-100"
                                                             >

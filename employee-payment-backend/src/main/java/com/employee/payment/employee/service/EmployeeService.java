@@ -12,8 +12,10 @@ import com.employee.payment.employee.repository.EmployeeCategoryRepository;
 import com.employee.payment.employee.repository.EmployeeRepository;
 import org.springframework.data.domain.Page;
 import org.springframework.data.domain.Pageable;
+import org.springframework.data.domain.Sort;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
+import java.util.List;
 
 @Service
 @Transactional
@@ -35,6 +37,10 @@ public class EmployeeService {
         this.bankRepository = bankRepository;
         this.auditLogService = auditLogService;
     }
+
+    // ============================================================
+    // CREATE EMPLOYEE
+    // ============================================================
 
     public EmployeeResponse create(EmployeeCreateRequest request) {
 
@@ -67,10 +73,23 @@ public class EmployeeService {
 
         Employee employee = new Employee();
 
-        employee.setEmployeeCode(request.employeeCode().trim());
-        employee.setName(request.name().trim());
-        employee.setPanNumber(request.panNumber().trim().toUpperCase());
-        employee.setAccountNumber(request.accountNumber().trim());
+        employee.setEmployeeCode(
+                request.employeeCode().trim()
+        );
+
+        employee.setName(
+                request.name().trim()
+        );
+
+        employee.setPanNumber(
+                request.panNumber() != null
+                        ? request.panNumber().trim().toUpperCase()
+                        : null
+        );
+
+        employee.setAccountNumber(
+                request.accountNumber().trim()
+        );
 
         employee.setIfscCode(
                 request.ifscCode() != null
@@ -78,7 +97,44 @@ public class EmployeeService {
                         : null
         );
 
-        employee.setPosition(request.position());
+        // ============================================================
+        // NEW EMPLOYEE DETAILS
+        // ============================================================
+
+        employee.setDepartment(
+                request.department().trim()
+        );
+
+        employee.setMedicalCardId(
+                request.medicalCardId() != null
+                        ? request.medicalCardId().trim()
+                        : null
+        );
+
+        employee.setUan(
+                request.uan() != null
+                        ? request.uan().trim()
+                        : null
+        );
+
+        employee.setAadhaar(
+                request.aadhaar() != null
+                        ? request.aadhaar().trim()
+                        : null
+        );
+
+        employee.setDateOfBirth(
+                request.dateOfBirth()
+        );
+
+        employee.setDateOfJoining(
+                request.dateOfJoining()
+        );
+
+        // ============================================================
+        // EXISTING EMPLOYEE DETAILS
+        // ============================================================
+
         employee.setPhoneNumber(request.phoneNumber());
         employee.setEmail(request.email());
         employee.setGradePay(request.gradePay());
@@ -105,6 +161,10 @@ public class EmployeeService {
         return toResponse(savedEmployee);
     }
 
+    // ============================================================
+    // GET BY ID
+    // ============================================================
+
     @Transactional(readOnly = true)
     public EmployeeResponse getById(Long id) {
 
@@ -118,6 +178,10 @@ public class EmployeeService {
         return toResponse(employee);
     }
 
+    // ============================================================
+    // GET ALL
+    // ============================================================
+
     @Transactional(readOnly = true)
     public Page<EmployeeResponse> getAll(Pageable pageable) {
 
@@ -125,6 +189,31 @@ public class EmployeeService {
                 .findAll(pageable)
                 .map(this::toResponse);
     }
+
+
+    // ============================================================
+// GET ALL EMPLOYEES FOR EXPORT
+// ============================================================
+
+    @Transactional(readOnly = true)
+    public List<EmployeeResponse> getAllForExport() {
+
+        return employeeRepository
+                .findAll(
+                        Sort.by(
+                                Sort.Order.asc("employeeCodeSort"),
+                                Sort.Order.asc("id")
+                        )
+                )
+                .stream()
+                .map(this::toResponse)
+                .toList();
+    }
+
+
+    // ============================================================
+    // SEARCH BY NAME
+    // ============================================================
 
     @Transactional(readOnly = true)
     public Page<EmployeeResponse> searchByName(
@@ -140,6 +229,10 @@ public class EmployeeService {
                 .map(this::toResponse);
     }
 
+    // ============================================================
+    // SEARCH BY EMPLOYEE CODE
+    // ============================================================
+
     @Transactional(readOnly = true)
     public Page<EmployeeResponse> searchByEmployeeCode(
             String employeeCode,
@@ -153,6 +246,10 @@ public class EmployeeService {
                 )
                 .map(this::toResponse);
     }
+
+    // ============================================================
+    // UPDATE EMPLOYEE
+    // ============================================================
 
     public EmployeeResponse update(
             Long id,
@@ -186,9 +283,19 @@ public class EmployeeService {
                     );
         }
 
-        employee.setName(request.name().trim());
-        employee.setPanNumber(request.panNumber().trim().toUpperCase());
-        employee.setAccountNumber(request.accountNumber().trim());
+        employee.setName(
+                request.name().trim()
+        );
+
+        employee.setPanNumber(
+                request.panNumber() != null
+                        ? request.panNumber().trim().toUpperCase()
+                        : null
+        );
+
+        employee.setAccountNumber(
+                request.accountNumber().trim()
+        );
 
         employee.setIfscCode(
                 request.ifscCode() != null
@@ -196,7 +303,44 @@ public class EmployeeService {
                         : null
         );
 
-        employee.setPosition(request.position());
+        // ============================================================
+        // NEW EMPLOYEE DETAILS
+        // ============================================================
+
+        employee.setDepartment(
+                request.department().trim()
+        );
+
+        employee.setMedicalCardId(
+                request.medicalCardId() != null
+                        ? request.medicalCardId().trim()
+                        : null
+        );
+
+        employee.setUan(
+                request.uan() != null
+                        ? request.uan().trim()
+                        : null
+        );
+
+        employee.setAadhaar(
+                request.aadhaar() != null
+                        ? request.aadhaar().trim()
+                        : null
+        );
+
+        employee.setDateOfBirth(
+                request.dateOfBirth()
+        );
+
+        employee.setDateOfJoining(
+                request.dateOfJoining()
+        );
+
+        // ============================================================
+        // EXISTING EMPLOYEE DETAILS
+        // ============================================================
+
         employee.setPhoneNumber(request.phoneNumber());
         employee.setEmail(request.email());
         employee.setGradePay(request.gradePay());
@@ -221,6 +365,10 @@ public class EmployeeService {
 
         return toResponse(updatedEmployee);
     }
+
+    // ============================================================
+    // DEACTIVATE
+    // ============================================================
 
     public void deactivate(Long id) {
 
@@ -251,6 +399,10 @@ public class EmployeeService {
         );
     }
 
+    // ============================================================
+    // ACTIVATE
+    // ============================================================
+
     public void activate(Long id) {
 
         Employee employee =
@@ -280,16 +432,36 @@ public class EmployeeService {
         );
     }
 
+    // ============================================================
+    // RESPONSE MAPPING
+    // ============================================================
+
     private EmployeeResponse toResponse(Employee employee) {
 
         return new EmployeeResponse(
+
                 employee.getId(),
                 employee.getEmployeeCode(),
                 employee.getName(),
                 employee.getPanNumber(),
                 employee.getAccountNumber(),
                 employee.getIfscCode(),
-                employee.getPosition(),
+
+                // ====================================================
+                // NEW EMPLOYEE DETAILS
+                // ====================================================
+
+                employee.getDepartment(),
+                employee.getMedicalCardId(),
+                employee.getUan(),
+                employee.getAadhaar(),
+                employee.getDateOfBirth(),
+                employee.getDateOfJoining(),
+
+                // ====================================================
+                // EXISTING EMPLOYEE DETAILS
+                // ====================================================
+
                 employee.getPhoneNumber(),
                 employee.getEmail(),
                 employee.getGradePay(),

@@ -6,6 +6,7 @@ import lombok.NoArgsConstructor;
 import lombok.Setter;
 
 import java.math.BigDecimal;
+import java.time.LocalDate;
 import java.time.LocalDateTime;
 
 @Entity
@@ -28,7 +29,7 @@ public class Employee {
 
     @Column(name = "employee_code", nullable = false, unique = true, length = 30)
     private String employeeCode;
-    
+
     @Column(name = "employee_code_sort", insertable = false, updatable = false)
     private BigDecimal employeeCodeSort;
 
@@ -38,20 +39,62 @@ public class Employee {
     @Column(name = "account_number", nullable = false, length = 50)
     private String accountNumber;
 
-//    @Column(name = "pan_number", nullable = false, length = 10)
-//    private String panNumber;
-
     @Column(name = "pan_number", length = 10)
     private String panNumber;
-
-//    @Column(name = "ifsc_code", nullable = false, length = 20)
-//    private String ifscCode;
 
     @Column(name = "ifsc_code", length = 20)
     private String ifscCode;
 
-    @Column(length = 100)
-    private String position;
+    // ============================================================
+    // EMPLOYEE DETAILS
+    // ============================================================
+
+    /**
+     * Department is compulsory for new/updated employees.
+     * Currently, stored directly as a String because there is
+     * no Department master table yet.
+     */
+    @Column(nullable = false, length = 50)
+    private String department;
+
+    /**
+     * Medical Card ID / UHID
+     * Optional
+     */
+    @Column(name = "medical_card_id", length = 50)
+    private String medicalCardId;
+
+    /**
+     * Universal Account Number
+     * Optional
+     */
+    @Column(length = 12)
+    private String uan;
+
+    /**
+     * Aadhaar number
+     * Optional
+     */
+    @Column(length = 12)
+    private String aadhaar;
+
+    /**
+     * Date of Birth
+     * Optional
+     */
+    @Column(name = "date_of_birth")
+    private LocalDate dateOfBirth;
+
+    /**
+     * Date of Joining
+     * Optional
+     */
+    @Column(name = "date_of_joining")
+    private LocalDate dateOfJoining;
+
+    // ============================================================
+    // EXISTING EMPLOYEE DETAILS
+    // ============================================================
 
     @Column(name = "phone_number", length = 20)
     private String phoneNumber;
@@ -68,6 +111,11 @@ public class Employee {
     @Column(length = 150)
     private String headquarters;
 
+    /**
+     * Designation is retained.
+     *
+     * Position has been removed as requested.
+     */
     @Column(length = 150)
     private String designation;
 

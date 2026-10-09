@@ -3,22 +3,34 @@ package com.employee.payment.employee.controller;
 import com.employee.payment.employee.dto.EmployeeCreateRequest;
 import com.employee.payment.employee.dto.EmployeeResponse;
 import com.employee.payment.employee.dto.EmployeeUpdateRequest;
+import com.employee.payment.employee.export.EmployeeExcelExporter;
 import com.employee.payment.employee.service.EmployeeService;
 import jakarta.validation.Valid;
 import org.springframework.data.domain.Page;
 import org.springframework.data.domain.PageRequest;
 import org.springframework.data.domain.Pageable;
-import org.springframework.web.bind.annotation.*;
 import org.springframework.data.domain.Sort;
+import org.springframework.http.HttpHeaders;
+import org.springframework.http.MediaType;
+import org.springframework.http.ResponseEntity;
+import org.springframework.web.bind.annotation.*;
+
+import java.io.IOException;
+import java.util.List;
 
 @RestController
 @RequestMapping("/api/employees")
 public class EmployeeController {
 
     private final EmployeeService employeeService;
+    private final EmployeeExcelExporter employeeExcelExporter;
 
-    public EmployeeController(EmployeeService employeeService) {
+    public EmployeeController(
+            EmployeeService employeeService,
+            EmployeeExcelExporter employeeExcelExporter
+    ) {
         this.employeeService = employeeService;
+        this.employeeExcelExporter = employeeExcelExporter;
     }
 
     @PostMapping
@@ -52,6 +64,33 @@ public class EmployeeController {
                 );
 
         return employeeService.getAll(pageable);
+    }
+
+    // ============================================================
+    // EXPORT EMPLOYEE MASTER TO EXCEL
+    // ============================================================
+
+    @GetMapping("/export")
+    public ResponseEntity<byte[]> exportEmployees()
+            throws IOException {
+
+        List<EmployeeResponse> employees =
+                employeeService.getAllForExport();
+
+        byte[] excelFile =
+                employeeExcelExporter.export(employees);
+
+        return ResponseEntity.ok()
+                .header(
+                        HttpHeaders.CONTENT_DISPOSITION,
+                        "attachment; filename=Employee_Master.xlsx"
+                )
+                .contentType(
+                        MediaType.parseMediaType(
+                                "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet"
+                        )
+                )
+                .body(excelFile);
     }
 
     @GetMapping("/search/name")

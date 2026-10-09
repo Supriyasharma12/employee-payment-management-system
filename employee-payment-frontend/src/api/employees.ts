@@ -19,13 +19,22 @@ export interface Employee {
     panNumber: string
     accountNumber: string
     ifscCode: string
-    position: string
+
+    // New employee details
+    department: string
+    medicalCardId: string
+    uan: string
+    aadhaar: string
+    dateOfBirth: string
+    dateOfJoining: string
+
     phoneNumber: string
     email: string
     gradePay: number
     scale: string
     headquarters: string
     designation: string
+
     categoryId: number
     categoryName?: string
     bankId?: number
@@ -39,13 +48,22 @@ export interface EmployeeRequest {
     panNumber: string
     accountNumber: string
     ifscCode: string
-    position: string
+
+    // New employee details
+    department: string
+    medicalCardId: string
+    uan: string
+    aadhaar: string
+    dateOfBirth: string
+    dateOfJoining: string
+
     phoneNumber: string
     email: string
     gradePay: number
     scale: string
     headquarters: string
     designation: string
+
     categoryId: number
     bankId?: number
 }
@@ -149,6 +167,17 @@ export const searchEmployeesByCode = async (
 ): Promise<EmployeePage> => {
     const response = await apiClient.get<EmployeePage>(
         `/employees/search/code?employeeCode=${encodeURIComponent(employeeCode)}&page=${page}&size=${size}`,
+    )
+
+    return response.data
+}
+
+export const exportEmployees = async (): Promise<Blob> => {
+    const response = await apiClient.get(
+        "/employees/export",
+        {
+            responseType: "blob",
+        },
     )
 
     return response.data

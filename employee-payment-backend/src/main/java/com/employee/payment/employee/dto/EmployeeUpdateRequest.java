@@ -8,6 +8,7 @@ import jakarta.validation.constraints.PositiveOrZero;
 import jakarta.validation.constraints.Size;
 
 import java.math.BigDecimal;
+import java.time.LocalDate;
 
 public record EmployeeUpdateRequest(
 
@@ -15,7 +16,7 @@ public record EmployeeUpdateRequest(
         @Size(max = 150)
         String name,
 
-//        @NotBlank(message = "PAN number is required")
+        // PAN NUMBER - OPTIONAL
         @Pattern(
                 regexp = "^$|^[A-Z]{5}[0-9]{4}[A-Z]$",
                 message = "Please enter a valid PAN number"
@@ -29,8 +30,41 @@ public record EmployeeUpdateRequest(
         @Size(max = 20)
         String ifscCode,
 
-        @Size(max = 100)
-        String position,
+        // ============================================================
+        // EMPLOYEE DETAILS
+        // ============================================================
+
+        @NotBlank(message = "Department is required")
+        @Size(max = 50)
+        String department,
+
+        // Medical Card ID / UHID - OPTIONAL
+        @Size(max = 50)
+        String medicalCardId,
+
+        // UAN - OPTIONAL
+        @Pattern(
+                regexp = "^$|^[0-9]{12}$",
+                message = "UAN must be exactly 12 digits"
+        )
+        String uan,
+
+// Aadhaar - OPTIONAL
+        @Pattern(
+                regexp = "^$|^[0-9]{12}$",
+                message = "Aadhaar must be exactly 12 digits"
+        )
+        String aadhaar,
+
+        // Date of Birth - OPTIONAL
+        LocalDate dateOfBirth,
+
+        // Date of Joining - OPTIONAL
+        LocalDate dateOfJoining,
+
+        // ============================================================
+        // EXISTING EMPLOYEE DETAILS
+        // ============================================================
 
         @Size(max = 20)
         String phoneNumber,

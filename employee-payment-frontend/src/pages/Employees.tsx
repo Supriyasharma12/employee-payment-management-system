@@ -11,6 +11,7 @@ import {
     activateEmployee,
     createEmployee,
     deactivateEmployee,
+    exportEmployees,
     getBanks,
     getEmployeeCategories,
     getEmployees,
@@ -44,6 +45,7 @@ import {
     ChevronLeft,
     ChevronRight,
     CreditCard,
+    Download,
     Landmark,
     Pencil,
     Plus,
@@ -134,6 +136,8 @@ export default function Employees() {
     const [saving, setSaving] =
         useState(false)
 
+    const [exporting, setExporting] = useState(false)
+
     const [actionLoadingId, setActionLoadingId] =
         useState<number | null>(null)
 
@@ -182,7 +186,14 @@ export default function Employees() {
         panNumber: "",
         accountNumber: "",
         ifscCode: "",
-        position: "",
+
+        department: "",
+        medicalCardId: "",
+        uan: "",
+        aadhaar: "",
+        dateOfBirth: "",
+        dateOfJoining: "",
+
         phoneNumber: "",
         email: "",
         gradePay: 0,
@@ -197,6 +208,7 @@ export default function Employees() {
         useState<EmployeeRequest>(
             emptyForm,
         )
+
 
     // =========================================================
     // LOAD EMPLOYEES
@@ -636,8 +648,23 @@ export default function Employees() {
             ifscCode:
                 employee.ifscCode ?? "",
 
-            position:
-                employee.position ?? "",
+            department:
+                employee.department ?? "",
+
+            medicalCardId:
+                employee.medicalCardId ?? "",
+
+            uan:
+                employee.uan ?? "",
+
+            aadhaar:
+                employee.aadhaar ?? "",
+
+            dateOfBirth:
+                employee.dateOfBirth ?? "",
+
+            dateOfJoining:
+                employee.dateOfJoining ?? "",
 
             phoneNumber:
                 employee.phoneNumber ?? "",
@@ -698,6 +725,27 @@ export default function Employees() {
         if (!form.name.trim()) {
             errors.name =
                 "Employee name is required."
+        }
+
+        if (!form.department.trim()) {
+            errors.department =
+                "Department is required."
+        }
+
+        if (
+            form.uan.trim() &&
+            !/^\d{12}$/.test(form.uan.trim())
+        ) {
+            errors.uan =
+                "UAN must be exactly 12 digits."
+        }
+
+        if (
+            form.aadhaar.trim() &&
+            !/^\d{12}$/.test(form.aadhaar.trim())
+        ) {
+            errors.aadhaar =
+                "Aadhaar must be exactly 12 digits."
         }
 
         // PAN NUMBER
@@ -997,6 +1045,41 @@ export default function Employees() {
             }
         }
 
+    // ============================================================
+// EXPORT EMPLOYEE MASTER
+// ============================================================
+
+    const handleExportExcel = async () => {
+        try {
+            setExporting(true)
+            setError("")
+
+            const blob = await exportEmployees()
+
+            const url = window.URL.createObjectURL(blob)
+
+            const link = document.createElement("a")
+            link.href = url
+            link.download = `Employee_Master_${new Date()
+                .toISOString()
+                .slice(0, 10)}.xlsx`
+
+            document.body.appendChild(link)
+            link.click()
+            link.remove()
+
+            window.URL.revokeObjectURL(url)
+        } catch (err) {
+            console.error(err)
+
+            setError(
+                "Failed to export employee master.",
+            )
+        } finally {
+            setExporting(false)
+        }
+    }
+
     // =========================================================
     // STYLES
     // =========================================================
@@ -1037,34 +1120,76 @@ export default function Employees() {
 
                 </div>
 
-                {/* ADD / EDIT EMPLOYEE */}
 
-                <Dialog
-                    open={dialogOpen}
-                    onOpenChange={(open) => {
-                        setDialogOpen(open)
+                {/* EMPLOYEE ACTIONS */}
+                <div className="flex items-center gap-2">
 
-                        if (!open) {
-                            resetForm()
-                        } else {
-                            setError("")
-                            setFieldErrors({})
-                        }
-                    }}
-                >
+                    {/* EXPORT EXCEL */}
+                    <Button
+                        type="button"
+                        variant="outline"
+                        onClick={() => void handleExportExcel()}
+                        disabled={exporting}
+                        className="
+            h-10
+            rounded-xl
+            border-slate-200
+            bg-white
+            px-4
+            text-sm
+            font-medium
+            text-slate-700
+            shadow-sm
+            hover:bg-slate-50
+            hover:text-slate-900
+        "
+                    >
+                        <Download className="mr-2 h-4 w-4" />
 
-                    <DialogTrigger
-                        render={
-                            <Button
-                                type="button"
-                                onClick={openAddDialog}
-                                className="h-10 rounded-xl px-5 shadow-sm"
-                            >
-                                <Plus className="mr-2 h-4 w-4" />
-                                Add Employee
-                            </Button>
-                        }
-                    />
+                        {exporting ? "Exporting..." : "Export Excel"}
+                    </Button>
+
+                    {/* ADD / EDIT EMPLOYEE */}
+                    <Dialog
+                        open={dialogOpen}
+                        onOpenChange={(open) => {
+                            setDialogOpen(open)
+
+                            if (!open) {
+                                resetForm()
+                            } else {
+                                setError("")
+                                setFieldErrors({})
+                            }
+                        }}
+                    >
+
+                        <DialogTrigger
+                            render={
+                                <Button
+                                    type="button"
+                                    onClick={openAddDialog}
+                                    className="
+                        h-10
+                        rounded-xl
+                        border
+                        border-slate-200
+                        bg-white
+                        px-5
+                        text-sm
+                        font-medium
+                        text-slate-700
+                        shadow-sm
+                        hover:bg-slate-50
+                        hover:text-slate-900
+                    "
+                                >
+                                    <Plus className="mr-2 h-4 w-4" />
+                                    Add Employee
+                                </Button>
+                            }
+                        />
+
 
                     <DialogContent
                         className="
@@ -1102,6 +1227,8 @@ export default function Employees() {
                             </DialogHeader>
 
                         </div>
+
+
 
                         {/* =====================================================
         SCROLLABLE FORM AREA
@@ -1217,7 +1344,7 @@ export default function Employees() {
 
                                         <FormField
                                             label="PAN Number"
-                                            // required
+
                                             error={fieldErrors.panNumber}
                                         >
                                             <Input
@@ -1274,28 +1401,177 @@ export default function Employees() {
 
                                         </FormField>
 
-                                        {/* Position */}
+                                        {/* Department */}
 
-                                        <FormField label="Position">
+                                        <FormField
+                                            label="Department"
+                                            required
+                                            error={fieldErrors.department}
+                                        >
+                                            <div className="relative">
+                                                <select
+                                                    id="department"
+                                                    value={form.department}
+                                                    onChange={(event) => {
+                                                        updateField(
+                                                            "department",
+                                                            event.target.value,
+                                                        )
 
-                                            <Input
-                                                id="position"
-                                                value={form.position}
-                                                onChange={(event) =>
-                                                    updateField(
-                                                        "position",
-                                                        event.target.value,
-                                                    )
-                                                }
-                                                placeholder="Position"
-                                                className="h-11 rounded-xl border-slate-200 shadow-sm"
-                                            />
+                                                        clearFieldError(
+                                                            "department",
+                                                        )
+                                                    }}
+                                                    className={`${selectClass} ${
+                                                        fieldErrors.department
+                                                            ? "border-red-300 focus:border-red-500"
+                                                            : ""
+                                                    }`}
+                                                >
+                                                    <option value="">
+                                                        Select department
+                                                    </option>
 
+                                                    <option value="ADMIN">
+                                                        ADMIN
+                                                    </option>
+
+                                                    <option value="ACCOUNTS">
+                                                        ACCOUNTS
+                                                    </option>
+
+                                                    <option value="PROCESSING">
+                                                        PROCESSING
+                                                    </option>
+
+                                                    <option value="PROCUREMENT">
+                                                        PROCUREMENT
+                                                    </option>
+
+                                                    <option value="MARKETING">
+                                                        MARKETING
+                                                    </option>
+
+                                                    <option value="FOODER">
+                                                        FOODER
+                                                    </option>
+
+                                                    <option value="STORE">
+                                                        STORE
+                                                    </option>
+                                                </select>
+
+                                                <ChevronDown className="pointer-events-none absolute right-3 top-1/2 h-4 w-4 -translate-y-1/2 text-slate-400" />
+                                            </div>
                                         </FormField>
 
                                     </div>
 
                                 </section>
+
+
+                                {/* Additional Employee Details */}
+
+                                <FormField label="Medical Card ID (UHID)">
+                                    <Input
+                                        id="medicalCardId"
+                                        value={form.medicalCardId}
+                                        onChange={(event) =>
+                                            updateField(
+                                                "medicalCardId",
+                                                event.target.value,
+                                            )
+                                        }
+                                        placeholder="Medical Card ID / UHID"
+                                        className="h-11 rounded-xl border-slate-200 shadow-sm"
+                                    />
+                                </FormField>
+
+                                <FormField
+                                    label="UAN"
+                                    error={fieldErrors.uan}
+                                >
+                                    <Input
+                                        id="uan"
+                                        type="text"
+                                        inputMode="numeric"
+                                        value={form.uan}
+                                        onChange={(event) => {
+                                            const value = event.target.value
+                                                .replace(/\D/g, "")
+                                                .slice(0, 12)
+
+                                            updateField(
+                                                "uan",
+                                                value,
+                                            )
+
+                                            clearFieldError("uan")
+                                        }}
+                                        placeholder="12-digit UAN"
+                                        maxLength={12}
+                                        className="h-11 rounded-xl border-slate-200 shadow-sm"
+                                        aria-invalid={!!fieldErrors.uan}
+                                    />
+                                </FormField>
+
+                                <FormField
+                                    label="Aadhaar"
+                                    error={fieldErrors.aadhaar}
+                                >
+                                    <Input
+                                        id="aadhaar"
+                                        type="text"
+                                        inputMode="numeric"
+                                        value={form.aadhaar}
+                                        onChange={(event) => {
+                                            const value = event.target.value
+                                                .replace(/\D/g, "")
+                                                .slice(0, 12)
+
+                                            updateField(
+                                                "aadhaar",
+                                                value,
+                                            )
+
+                                            clearFieldError("aadhaar")
+                                        }}
+                                        placeholder="12-digit Aadhaar"
+                                        maxLength={12}
+                                        className="h-11 rounded-xl border-slate-200 shadow-sm"
+                                        aria-invalid={!!fieldErrors.aadhaar}
+                                    />
+                                </FormField>
+
+                                <FormField label="Date of Birth">
+                                    <Input
+                                        id="dateOfBirth"
+                                        type="date"
+                                        value={form.dateOfBirth}
+                                        onChange={(event) =>
+                                            updateField(
+                                                "dateOfBirth",
+                                                event.target.value,
+                                            )
+                                        }
+                                        className="h-11 rounded-xl border-slate-200 shadow-sm"
+                                    />
+                                </FormField>
+
+                                <FormField label="Date of Joining">
+                                    <Input
+                                        id="dateOfJoining"
+                                        type="date"
+                                        value={form.dateOfJoining}
+                                        onChange={(event) =>
+                                            updateField(
+                                                "dateOfJoining",
+                                                event.target.value,
+                                            )
+                                        }
+                                        className="h-11 rounded-xl border-slate-200 shadow-sm"
+                                    />
+                                </FormField>
 
                                 {/* =================================================
                 EMPLOYMENT DETAILS
@@ -1860,6 +2136,7 @@ export default function Employees() {
                 </Dialog>
 
             </div>
+            </div>
 
             {/* =====================================================
                 EMPLOYEE RECORDS
@@ -2149,247 +2426,331 @@ export default function Employees() {
 
                     ) : (
 
-                        /* =================================================
-                            TABLE
-                           ================================================= */
+                        <>
 
                         <div className="overflow-hidden rounded-xl border border-slate-200">
+                            {/* =================================================
+            TABLE
+           ================================================= */}
 
-                            <div className="overflow-x-auto">
+                        <div className="overflow-x-auto">
 
-                                <table className="w-full min-w-237.5 text-sm">
+                        <table className="w-full min-w-[2400px] text-sm">
 
-                                    <thead className="bg-slate-50">
+                        <thead className="bg-slate-50">
 
-                                    <tr className="border-b border-slate-200">
+                        <tr className="border-b border-slate-200">
 
-                                        <th className="px-4 py-3 text-left text-xs font-semibold uppercase tracking-wide text-slate-500">
-                                            Employee Code
-                                        </th>
+                            {/* EMPLOYEE CODE */}
+                            <th className="sticky left-0 z-20 w-[120px] min-w-[120px] whitespace-nowrap border-r border-slate-200 bg-slate-50 px-4 py-3 text-left text-xs font-semibold uppercase tracking-wide text-slate-500">
+                                Employee Code
+                            </th>
 
-                                        <th className="px-4 py-3 text-left text-xs font-semibold uppercase tracking-wide text-slate-500">
-                                            Employee Name
-                                        </th>
+                            {/* EMPLOYEE NAME */}
+                            <th className="sticky left-[120px] z-20 w-[200px] min-w-[200px] whitespace-nowrap border-r border-slate-200 bg-slate-50 px-4 py-3 text-left text-xs font-semibold uppercase tracking-wide text-slate-500">
+                                Employee Name
+                            </th>
 
-                                        <th className="px-4 py-3 text-left text-xs font-semibold uppercase tracking-wide text-slate-500">
-                                            PAN
-                                        </th>
+                        <th className="whitespace-nowrap px-4 py-3 text-left text-xs font-semibold uppercase tracking-wide text-slate-500">
+                        PAN
+                        </th>
 
-                                        <th className="px-4 py-3 text-left text-xs font-semibold uppercase tracking-wide text-slate-500">
-                                            Designation
-                                        </th>
+                        <th className="whitespace-nowrap px-4 py-3 text-left text-xs font-semibold uppercase tracking-wide text-slate-500">
+                        Department
+                        </th>
 
-                                        <th className="px-4 py-3 text-left text-xs font-semibold uppercase tracking-wide text-slate-500">
-                                            Category
-                                        </th>
+                        <th className="whitespace-nowrap px-4 py-3 text-left text-xs font-semibold uppercase tracking-wide text-slate-500">
+                        Designation
+                        </th>
 
-                                        <th className="px-4 py-3 text-left text-xs font-semibold uppercase tracking-wide text-slate-500">
-                                            Bank
-                                        </th>
+                        <th className="whitespace-nowrap px-4 py-3 text-left text-xs font-semibold uppercase tracking-wide text-slate-500">
+                        Medical Card ID / UHID
+                        </th>
 
-                                        <th className="px-4 py-3 text-left text-xs font-semibold uppercase tracking-wide text-slate-500">
-                                            Status
-                                        </th>
+                        <th className="whitespace-nowrap px-4 py-3 text-left text-xs font-semibold uppercase tracking-wide text-slate-500">
+                        UAN
+                        </th>
 
-                                        <th className="px-4 py-3 text-right text-xs font-semibold uppercase tracking-wide text-slate-500">
-                                            Actions
-                                        </th>
+                        <th className="whitespace-nowrap px-4 py-3 text-left text-xs font-semibold uppercase tracking-wide text-slate-500">
+                        Aadhaar
+                        </th>
 
-                                    </tr>
+                        <th className="whitespace-nowrap px-4 py-3 text-left text-xs font-semibold uppercase tracking-wide text-slate-500">
+                        Date of Birth
+                        </th>
 
-                                    </thead>
+                        <th className="whitespace-nowrap px-4 py-3 text-left text-xs font-semibold uppercase tracking-wide text-slate-500">
+                        Date of Joining
+                        </th>
 
-                                    <tbody>
+                        <th className="whitespace-nowrap px-4 py-3 text-left text-xs font-semibold uppercase tracking-wide text-slate-500">
+                        Bank Account Number
+                        </th>
 
-                                    {employees.map(
-                                        (
-                                            employee,
-                                        ) => (
+                        <th className="whitespace-nowrap px-4 py-3 text-left text-xs font-semibold uppercase tracking-wide text-slate-500">
+                        IFSC Code
+                        </th>
 
-                                            <tr
-                                                key={
-                                                    employee.id
-                                                }
-                                                className="border-b border-slate-100 last:border-0 hover:bg-slate-50/60"
-                                            >
+                        <th className="whitespace-nowrap px-4 py-3 text-left text-xs font-semibold uppercase tracking-wide text-slate-500">
+                        Phone Number
+                        </th>
 
-                                                {/* EMPLOYEE CODE */}
+                        <th className="whitespace-nowrap px-4 py-3 text-left text-xs font-semibold uppercase tracking-wide text-slate-500">
+                        Email
+                        </th>
 
-                                                <td className="px-4 py-3.5">
+                        <th className="whitespace-nowrap px-4 py-3 text-left text-xs font-semibold uppercase tracking-wide text-slate-500">
+                        Grade Pay
+                        </th>
 
-                                                        <span className="font-medium tabular-nums text-slate-800">
-                                                            {
-                                                                employee.employeeCode
-                                                            }
-                                                        </span>
+                        <th className="whitespace-nowrap px-4 py-3 text-left text-xs font-semibold uppercase tracking-wide text-slate-500">
+                        Scale
+                        </th>
 
-                                                </td>
+                        <th className="whitespace-nowrap px-4 py-3 text-left text-xs font-semibold uppercase tracking-wide text-slate-500">
+                        Headquarters
+                        </th>
 
-                                                {/* EMPLOYEE NAME */}
+                        <th className="whitespace-nowrap px-4 py-3 text-left text-xs font-semibold uppercase tracking-wide text-slate-500">
+                        Employee Category
+                        </th>
 
-                                                <td className="px-4 py-3.5">
+                        <th className="whitespace-nowrap px-4 py-3 text-left text-xs font-semibold uppercase tracking-wide text-slate-500">
+                        Bank
+                        </th>
 
-                                                        <span className="font-medium text-slate-800">
-                                                            {
-                                                                employee.name
-                                                            }
-                                                        </span>
+                        <th className="whitespace-nowrap px-4 py-3 text-left text-xs font-semibold uppercase tracking-wide text-slate-500">
+                        Status
+                        </th>
 
-                                                </td>
+                        <th className="whitespace-nowrap px-4 py-3 text-right text-xs font-semibold uppercase tracking-wide text-slate-500">
+                        Actions
+                        </th>
 
-                                                {/* PAN */}
+                        </tr>
 
-                                                <td className="px-4 py-3.5">
+                        </thead>
 
-    <span className="font-medium tracking-wide text-slate-700">
-        {employee.panNumber || "-"}
+                        <tbody>
+
+                    {employees.map((employee) => (
+
+                        <tr
+                        key={employee.id}
+                    className="border-b border-slate-100 last:border-0 hover:bg-slate-50/60"
+                >
+
+                    {/* EMPLOYEE CODE */}
+                            <td className="sticky left-0 z-10 w-[120px] min-w-[120px] whitespace-nowrap border-r border-slate-200 bg-white px-4 py-3.5">
+    <span className="font-medium tabular-nums text-slate-800">
+        {employee.employeeCode}
     </span>
+                            </td>
 
-                                                </td>
+                            {/* EMPLOYEE NAME */}
+                            <td className="sticky left-[120px] z-10 w-[200px] min-w-[200px] whitespace-nowrap border-r border-slate-200 bg-white px-4 py-3.5">
+    <span className="font-medium text-slate-800">
+        {employee.name}
+    </span>
+                            </td>
 
-                                                {/* DESIGNATION */}
+                    {/* PAN */}
+                    <td className="whitespace-nowrap px-4 py-3.5">
+                            <span className="font-medium tracking-wide text-slate-700">
+                                {employee.panNumber || "-"}
+                            </span>
+                    </td>
 
-                                                <td className="px-4 py-3.5 text-slate-600">
+                    {/* DEPARTMENT */}
+                    <td className="whitespace-nowrap px-4 py-3.5 text-slate-600">
+                        {employee.department || "-"}
+                    </td>
 
-                                                    {
-                                                        employee.designation ||
-                                                        "-"
-                                                    }
+                    {/* DESIGNATION */}
+                    <td className="whitespace-nowrap px-4 py-3.5 text-slate-600">
+                        {employee.designation || "-"}
+                    </td>
 
-                                                </td>
+                    {/* MEDICAL CARD ID / UHID */}
+                    <td className="whitespace-nowrap px-4 py-3.5 text-slate-600">
+                        {employee.medicalCardId || "-"}
+                    </td>
 
-                                                {/* CATEGORY */}
+                    {/* UAN */}
+                    <td className="whitespace-nowrap px-4 py-3.5 text-slate-600">
+                        {employee.uan || "-"}
+                    </td>
 
-                                                <td className="px-4 py-3.5">
+                    {/* AADHAAR */}
+                    <td className="whitespace-nowrap px-4 py-3.5 text-slate-600">
+                        {employee.aadhaar || "-"}
+                    </td>
 
-                                                    {employee.categoryName ? (
+                    {/* DATE OF BIRTH */}
+                    <td className="whitespace-nowrap px-4 py-3.5 text-slate-600">
+                        {employee.dateOfBirth || "-"}
+                    </td>
 
-                                                        <span className="inline-flex rounded-full bg-slate-100 px-2.5 py-1 text-xs font-medium text-slate-600">
-                                                                {
-                                                                    employee.categoryName
-                                                                }
-                                                            </span>
+                    {/* DATE OF JOINING */}
+                    <td className="whitespace-nowrap px-4 py-3.5 text-slate-600">
+                        {employee.dateOfJoining || "-"}
+                    </td>
 
-                                                    ) : (
+                    {/* BANK ACCOUNT NUMBER */}
+                    <td className="whitespace-nowrap px-4 py-3.5 text-slate-600">
+                        {employee.accountNumber || "-"}
+                    </td>
 
-                                                        <span className="text-slate-400">
-                                                                -
-                                                            </span>
+                    {/* IFSC CODE */}
+                    <td className="whitespace-nowrap px-4 py-3.5 text-slate-600">
+                        {employee.ifscCode || "-"}
+                    </td>
 
-                                                    )}
+                    {/* PHONE NUMBER */}
+                    <td className="whitespace-nowrap px-4 py-3.5 text-slate-600">
+                        {employee.phoneNumber || "-"}
+                    </td>
 
-                                                </td>
+                    {/* EMAIL */}
+                    <td className="max-w-[220px] truncate px-4 py-3.5 text-slate-600">
+                        {employee.email || "-"}
+                    </td>
 
-                                                {/* BANK */}
+                    {/* GRADE PAY */}
+                    <td className="whitespace-nowrap px-4 py-3.5 text-slate-600">
+                        {employee.gradePay !== null &&
+                        employee.gradePay !== undefined
+                            ? Number(employee.gradePay).toLocaleString(
+                                "en-IN",
+                                {
+                                    minimumFractionDigits: 2,
+                                    maximumFractionDigits: 2,
+                                },
+                            )
+                            : "-"}
+                    </td>
 
-                                                <td className="px-4 py-3.5 text-slate-600">
+                    {/* SCALE */}
+                    <td className="whitespace-nowrap px-4 py-3.5 text-slate-600">
+                        {employee.scale || "-"}
+                    </td>
 
-                                                    {
-                                                        employee.bankName ||
-                                                        "-"
-                                                    }
+                    {/* HEADQUARTERS */}
+                    <td className="whitespace-nowrap px-4 py-3.5 text-slate-600">
+                        {employee.headquarters || "-"}
+                    </td>
 
-                                                </td>
+                    {/* EMPLOYEE CATEGORY */}
+                    <td className="whitespace-nowrap px-4 py-3.5">
 
-                                                {/* STATUS */}
+                        {employee.categoryName ? (
 
-                                                <td className="px-4 py-3.5">
+                            <span className="inline-flex rounded-full bg-slate-100 px-2.5 py-1 text-xs font-medium text-slate-600">
+                                    {employee.categoryName}
+                                </span>
 
-                                                    {employee.active ? (
+                        ) : (
 
-                                                        <Badge
-                                                            variant="outline"
-                                                            className="border-emerald-200 bg-emerald-50 text-emerald-700"
-                                                        >
-                                                            <CheckCircle2 className="mr-1 h-3 w-3" />
+                            <span className="text-slate-400">
+                                    -
+                                </span>
 
-                                                            Active
-                                                        </Badge>
+                        )}
 
-                                                    ) : (
+                    </td>
 
-                                                        <Badge
-                                                            variant="outline"
-                                                            className="border-slate-200 bg-slate-50 text-slate-600"
-                                                        >
-                                                            Inactive
-                                                        </Badge>
+                    {/* BANK */}
+                    <td className="whitespace-nowrap px-4 py-3.5 text-slate-600">
+                        {employee.bankName || "-"}
+                    </td>
 
-                                                    )}
+                    {/* STATUS */}
+                    <td className="whitespace-nowrap px-4 py-3.5">
 
-                                                </td>
+                        {employee.active ? (
 
-                                                {/* ACTIONS */}
+                            <Badge
+                                variant="outline"
+                                className="border-emerald-200 bg-emerald-50 text-emerald-700"
+                            >
+                                <CheckCircle2 className="mr-1 h-3 w-3" />
+                                Active
+                            </Badge>
 
-                                                <td className="px-4 py-3.5">
+                        ) : (
 
-                                                    <div className="flex justify-end gap-2">
+                            <Badge
+                                variant="outline"
+                                className="border-slate-200 bg-slate-50 text-slate-600"
+                            >
+                                Inactive
+                            </Badge>
 
-                                                        <Button
-                                                            type="button"
-                                                            variant="outline"
-                                                            size="sm"
-                                                            onClick={() =>
-                                                                openEditDialog(
-                                                                    employee,
-                                                                )
-                                                            }
-                                                            disabled={
-                                                                actionLoadingId ===
-                                                                employee.id
-                                                            }
-                                                            className="h-8 border-slate-200"
-                                                        >
-                                                            <Pencil className="mr-1.5 h-3.5 w-3.5" />
+                        )}
 
-                                                            Edit
-                                                        </Button>
+                    </td>
 
-                                                        <Button
-                                                            type="button"
-                                                            variant="outline"
-                                                            size="sm"
-                                                            onClick={() =>
-                                                                void handleToggleEmployeeStatus(
-                                                                    employee,
-                                                                )
-                                                            }
-                                                            disabled={
-                                                                actionLoadingId ===
-                                                                employee.id
-                                                            }
-                                                            className={
-                                                                employee.active
-                                                                    ? "h-8 border-red-200 text-red-600 hover:bg-red-50"
-                                                                    : "h-8 border-emerald-200 text-emerald-600 hover:bg-emerald-50"
-                                                            }
-                                                        >
-                                                            {actionLoadingId ===
-                                                            employee.id
-                                                                ? "Updating..."
-                                                                : employee.active
-                                                                    ? "Deactivate"
-                                                                    : "Activate"}
-                                                        </Button>
+                    {/* ACTIONS */}
+                    <td className="whitespace-nowrap px-4 py-3.5">
 
-                                                    </div>
+                        <div className="flex justify-end gap-2">
 
-                                                </td>
+                            <Button
+                                type="button"
+                                variant="outline"
+                                size="sm"
+                                onClick={() =>
+                                    openEditDialog(employee)
+                                }
+                                disabled={
+                                    actionLoadingId === employee.id
+                                }
+                                className="h-8 border-slate-200"
+                            >
+                                <Pencil className="mr-1.5 h-3.5 w-3.5" />
+                                Edit
+                            </Button>
 
-                                            </tr>
-
-                                        ),
-                                    )}
-
-                                    </tbody>
-
-                                </table>
-
-                            </div>
+                            <Button
+                                type="button"
+                                variant="outline"
+                                size="sm"
+                                onClick={() =>
+                                    void handleToggleEmployeeStatus(
+                                        employee,
+                                    )
+                                }
+                                disabled={
+                                    actionLoadingId === employee.id
+                                }
+                                className={
+                                    employee.active
+                                        ? "h-8 border-red-200 text-red-600 hover:bg-red-50"
+                                        : "h-8 border-emerald-200 text-emerald-600 hover:bg-emerald-50"
+                                }
+                            >
+                                {actionLoadingId === employee.id
+                                    ? "Updating..."
+                                    : employee.active
+                                        ? "Deactivate"
+                                        : "Activate"}
+                            </Button>
 
                         </div>
 
-                    )}
+                    </td>
+
+                </tr>
+
+                ))}
+
+            </tbody>
+
+        </table>
+
+</div>
+
+</div>
 
                     {/* =================================================
                         PAGINATION
@@ -2463,11 +2824,11 @@ export default function Employees() {
 
                             </div>
                         )}
-
+                        </>
+                    )}
                 </div>
+</section>
 
-            </section>
-
-        </div>
-    )
+</div>
+)
 }
