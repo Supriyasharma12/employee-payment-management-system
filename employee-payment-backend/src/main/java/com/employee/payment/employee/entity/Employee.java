@@ -92,6 +92,9 @@ public class Employee {
     @Column(name = "date_of_joining")
     private LocalDate dateOfJoining;
 
+    @Column(name = "payment_tracking_start_month")
+    private LocalDate paymentTrackingStartMonth;
+
     // ============================================================
     // EXISTING EMPLOYEE DETAILS
     // ============================================================

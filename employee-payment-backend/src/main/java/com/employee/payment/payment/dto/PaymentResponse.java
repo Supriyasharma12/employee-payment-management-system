@@ -3,10 +3,13 @@ package com.employee.payment.payment.dto;
 import java.math.BigDecimal;
 import java.time.LocalDate;
 import java.time.LocalDateTime;
+import java.util.List;
 
 public record PaymentResponse(
 
         Long id,
+        Long paymentBatchId,
+
 
         Long employeeId,
         String employeeCode,
@@ -33,6 +36,8 @@ public record PaymentResponse(
         String status,
 
         LocalDateTime createdAt,
-        LocalDateTime updatedAt
+        LocalDateTime updatedAt,
+
+        List<PaymentMonthlyDetailResponse> monthlyDetails
 ) {
 }

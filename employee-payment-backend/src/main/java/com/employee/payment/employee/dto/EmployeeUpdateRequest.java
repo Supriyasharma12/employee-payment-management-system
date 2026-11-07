@@ -56,11 +56,11 @@ public record EmployeeUpdateRequest(
         )
         String aadhaar,
 
-        // Date of Birth - OPTIONAL
         LocalDate dateOfBirth,
-
-        // Date of Joining - OPTIONAL
         LocalDate dateOfJoining,
+        LocalDate paymentTrackingStartMonth,
+
+
 
         // ============================================================
         // EXISTING EMPLOYEE DETAILS

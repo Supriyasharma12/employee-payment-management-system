@@ -70,6 +70,8 @@ public record EmployeeCreateRequest(
         // Date of Joining - OPTIONAL
         LocalDate dateOfJoining,
 
+        LocalDate paymentTrackingStartMonth,
+
         // ============================================================
         // EXISTING EMPLOYEE DETAILS
         // ============================================================

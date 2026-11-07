@@ -23,6 +23,7 @@ public record EmployeeResponse(
         String aadhaar,
         LocalDate dateOfBirth,
         LocalDate dateOfJoining,
+        LocalDate paymentTrackingStartMonth,
 
         // ============================================================
         // EXISTING EMPLOYEE DETAILS

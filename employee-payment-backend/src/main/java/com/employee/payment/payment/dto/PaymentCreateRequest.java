@@ -1,6 +1,7 @@
 package com.employee.payment.payment.dto;
 
 import jakarta.validation.constraints.NotNull;
+import jakarta.validation.constraints.Positive;
 import jakarta.validation.constraints.PositiveOrZero;
 
 import java.math.BigDecimal;
@@ -13,6 +14,10 @@ public record PaymentCreateRequest(
 
         @NotNull
         Long paymentPeriodId,
+
+        @NotNull
+        @Positive
+        Long paymentBatchId,
 
         @NotNull
         LocalDate paymentDate,

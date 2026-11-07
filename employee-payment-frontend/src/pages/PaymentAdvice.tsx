@@ -1,4 +1,5 @@
 import {
+    Fragment,
     useCallback,
     useEffect,
     useRef,
@@ -11,7 +12,7 @@ import {
     ChevronRight,
     Download,
     FileText,
-    Landmark,
+    // Landmark,
     Search,
     UserRound,
     X,
@@ -25,7 +26,14 @@ import { Label } from "@/components/ui/label"
 import {
     exportPaymentAdvice,
     getPaymentAdvice,
+    getPaymentAdviceBatches,
+    finalizePaymentAdvice,
+    getFinalizedPaymentAdvice,
+    getFinalizedPaymentAdviceByBatchAndBank,
+    cancelPaymentAdvice,
     type PaymentAdvice as PaymentAdviceRecord,
+    type PaymentAdviceBatch,
+    type PaymentAdviceFinalized,
 } from "@/api/paymentAdvice"
 
 import {
@@ -38,10 +46,10 @@ import {
     type EmployeeCategory,
 } from "@/api/employees"
 
-import {
-    getPaymentPeriods,
-    type PaymentPeriod,
-} from "@/api/paymentPeriods"
+// import {
+//     getPaymentPeriods,
+//     type PaymentPeriod,
+// } from "@/api/paymentPeriods"
 
 
 const PAGE_SIZE = 10
@@ -57,8 +65,8 @@ export default function PaymentAdvice() {
     const [records, setRecords] =
         useState<PaymentAdviceRecord[]>([])
 
-    const [paymentPeriods, setPaymentPeriods] =
-        useState<PaymentPeriod[]>([])
+    // const [paymentPeriods, setPaymentPeriods] =
+    //     useState<PaymentPeriod[]>([])
 
     const [categories, setCategories] =
         useState<EmployeeCategory[]>([])
@@ -66,13 +74,19 @@ export default function PaymentAdvice() {
     const [banks, setBanks] =
         useState<Bank[]>([])
 
+    const [paymentBatches, setPaymentBatches] =
+        useState<PaymentAdviceBatch[]>([])
+
+    const [paymentBatchId, setPaymentBatchId] =
+        useState("")
+
 
     // ---------------------------------------------------------
     // FILTER VALUES
     // ---------------------------------------------------------
 
-    const [paymentPeriodId, setPaymentPeriodId] =
-        useState("")
+    // const [paymentPeriodId, setPaymentPeriodId] =
+    //     useState("")
 
     const [employeeCode, setEmployeeCode] =
         useState("")
@@ -95,6 +109,9 @@ export default function PaymentAdvice() {
 
     const [appliedEmployeeName, setAppliedEmployeeName] =
         useState("")
+
+    const [expandedEmployees, setExpandedEmployees] =
+        useState<Set<string>>(new Set())
 
 
     // ---------------------------------------------------------
@@ -145,43 +162,65 @@ export default function PaymentAdvice() {
         useState("")
 
 
+    // Payment Advice finalization
+    const [finalizing, setFinalizing] = useState(false)
+    const [checkingFinalizedAdvice, setCheckingFinalizedAdvice] =
+        useState(false)
+    const [cancelling, setCancelling] = useState(false)
+
+    const [selectedFinalizedAdvice, setSelectedFinalizedAdvice] =
+        useState<PaymentAdviceFinalized | null>(null)
+
     // ---------------------------------------------------------
     // LOAD FILTER DATA
     // ---------------------------------------------------------
 
-    useEffect(() => {
 
-        const loadFilterData = async () => {
 
-            try {
 
-                const [
-                    periods,
-                    employeeCategories,
-                    employeeBanks,
-                ] = await Promise.all([
-                    getPaymentPeriods(),
-                    getEmployeeCategories(),
-                    getBanks(),
-                ])
+useEffect(() => {
+    const loadFilterData = async () => {
+        // Load existing filters
+        try {
+            const [
+                // periods,
+                employeeCategories,
+                employeeBanks,
+            ] = await Promise.all([
+                // getPaymentPeriods(),
+                getEmployeeCategories(),
+                getBanks(),
+            ])
 
-                setPaymentPeriods(periods)
-                setCategories(employeeCategories)
-                setBanks(employeeBanks)
+            // setPaymentPeriods(periods)
+            setCategories(employeeCategories)
+            setBanks(employeeBanks)
+        } catch (error) {
+            console.error(error)
 
-            } catch (error) {
-
-                console.error(error)
-
-                setErrorMessage(
-                    "Failed to load Payment Advice filters.",
-                )
-            }
+            setErrorMessage(
+                "Failed to load Payment Advice filters.",
+            )
         }
 
-        void loadFilterData()
+        // Load payment batches separately
+        // so a batch-loading failure does not affect other filters.
+        try {
+            const batches = await getPaymentAdviceBatches()
+            setPaymentBatches(batches)
+        } catch (batchError) {
+            console.error(
+                "Failed to load payment batches.",
+                batchError,
+            )
 
-    }, [])
+            setPaymentBatches([])
+        }
+    }
+
+    void loadFilterData()
+}, [])
+
 
 
     // ---------------------------------------------------------
@@ -209,10 +248,10 @@ export default function PaymentAdvice() {
                         page,
                         PAGE_SIZE,
                         {
-                            paymentPeriodId:
-                                paymentPeriodId
-                                    ? Number(paymentPeriodId)
-                                    : undefined,
+                            // paymentPeriodId:
+                            //     paymentPeriodId
+                            //         ? Number(paymentPeriodId)
+                            //         : undefined,
 
                             categoryId:
                                 categoryId
@@ -231,6 +270,9 @@ export default function PaymentAdvice() {
                             employeeName:
                                 appliedEmployeeName.trim() ||
                                 undefined,
+                            paymentBatchId: paymentBatchId
+                                ? Number(paymentBatchId)
+                                : undefined,
                         },
                     )
 
@@ -276,15 +318,70 @@ export default function PaymentAdvice() {
                 }
             }
         },
+
         [
-            paymentPeriodId,
+            // paymentPeriodId,
             categoryId,
             bankId,
             appliedEmployeeCode,
             appliedEmployeeName,
+            paymentBatchId,
+
         ],
     )
 
+    // ---------------------------------------------------------
+// LOAD EXISTING FINALIZED PAYMENT ADVICE
+// ---------------------------------------------------------
+
+    useEffect(() => {
+        let isActive = true
+
+        const loadExistingFinalizedAdvice = async () => {
+            if (!paymentBatchId || !bankId) {
+                setSelectedFinalizedAdvice(null)
+                setCheckingFinalizedAdvice(false)
+                return
+            }
+
+            try {
+                setCheckingFinalizedAdvice(true)
+                setSelectedFinalizedAdvice(null)
+
+                const savedAdvice =
+                    await getFinalizedPaymentAdviceByBatchAndBank(
+                        Number(paymentBatchId),
+                        Number(bankId),
+                    )
+
+                if (isActive) {
+                    setSelectedFinalizedAdvice(savedAdvice)
+                }
+            } catch (error) {
+                console.error(
+                    "Failed to retrieve existing Payment Advice:",
+                    error,
+                )
+
+                if (isActive) {
+                    setSelectedFinalizedAdvice(null)
+                    setErrorMessage(
+                        "Failed to check existing Payment Advice.",
+                    )
+                }
+            } finally {
+                if (isActive) {
+                    setCheckingFinalizedAdvice(false)
+                }
+            }
+        }
+
+        void loadExistingFinalizedAdvice()
+
+        return () => {
+            isActive = false
+        }
+    }, [paymentBatchId, bankId])
 
     // ---------------------------------------------------------
     // INITIAL LOAD + FILTER CHANGE
@@ -511,7 +608,7 @@ export default function PaymentAdvice() {
 
         suggestionRequestId.current += 1
 
-        setPaymentPeriodId("")
+        // setPaymentPeriodId("")
 
         setEmployeeCode("")
 
@@ -579,77 +676,176 @@ export default function PaymentAdvice() {
     // EXPORT
     // ---------------------------------------------------------
 
-    const handleExport = async () => {
+
+const handleExport = async () => {
+    try {
+        setExporting(true)
+        setErrorMessage("")
+
+        const blob = await exportPaymentAdvice({
+            // paymentPeriodId: paymentPeriodId
+            //     ? Number(paymentPeriodId)
+            //     : undefined,
+
+            categoryId: categoryId
+                ? Number(categoryId)
+                : undefined,
+
+            bankId: bankId
+                ? Number(bankId)
+                : undefined,
+
+            employeeCode:
+                appliedEmployeeCode.trim() || undefined,
+
+            employeeName:
+                appliedEmployeeName.trim() || undefined,
+
+            paymentBatchId: paymentBatchId
+                ? Number(paymentBatchId)
+                : undefined,
+        })
+
+        const url = window.URL.createObjectURL(blob)
+
+        const link = document.createElement("a")
+        link.href = url
+        link.download = "payment-advice.xlsx"
+
+        document.body.appendChild(link)
+        link.click()
+        link.remove()
+
+        window.URL.revokeObjectURL(url)
+    } catch (error) {
+        console.error(error)
+
+        setErrorMessage(
+            "Failed to export Payment Advice.",
+        )
+    } finally {
+        setExporting(false)
+    }
+}
+
+    // ---------------------------------------------------------
+// FINALIZE PAYMENT ADVICE
+// ---------------------------------------------------------
+
+    const handleFinalizeAdvice = async () => {
+        if (!paymentBatchId || !bankId) {
+            setErrorMessage(
+                "Please select both Payment Batch and Bank before finalizing."
+            )
+            return
+        }
+
+        if (checkingFinalizedAdvice) {
+            return
+        }
+
+        if (selectedFinalizedAdvice?.status === "FINALIZED") {
+            setErrorMessage(
+                "Payment Advice is already finalized for this batch and bank."
+            )
+            return
+        }
 
         try {
-
-            setExporting(true)
-
+            setFinalizing(true)
             setErrorMessage("")
 
-            const blob =
-                await exportPaymentAdvice({
-                    paymentPeriodId:
-                        paymentPeriodId
-                            ? Number(paymentPeriodId)
-                            : undefined,
+            const result = await finalizePaymentAdvice({
+                paymentBatchId: Number(paymentBatchId),
+                bankId: Number(bankId),
+            })
 
-                    categoryId:
-                        categoryId
-                            ? Number(categoryId)
-                            : undefined,
+            const savedAdvice =
+                await getFinalizedPaymentAdvice(result.id)
 
-                    bankId:
-                        bankId
-                            ? Number(bankId)
-                            : undefined,
-
-                    employeeCode:
-                        appliedEmployeeCode.trim() ||
-                        undefined,
-
-                    employeeName:
-                        appliedEmployeeName.trim() ||
-                        undefined,
-                })
-
-
-            const url =
-                window.URL.createObjectURL(
-                    blob,
-                )
-
-            const link =
-                document.createElement("a")
-
-            link.href = url
-
-            link.download =
-                "payment-advice.xlsx"
-
-            document.body.appendChild(
-                link,
-            )
-
-            link.click()
-
-            link.remove()
-
-            window.URL.revokeObjectURL(
-                url,
-            )
+            setSelectedFinalizedAdvice(savedAdvice)
 
         } catch (error) {
+            console.error(error)
 
+            // If finalization failed because an advice already exists,
+            // try retrieving that saved advice.
+            try {
+                const existingAdvice =
+                    await getFinalizedPaymentAdviceByBatchAndBank(
+                        Number(paymentBatchId),
+                        Number(bankId),
+                    )
+
+                if (existingAdvice) {
+                    setSelectedFinalizedAdvice(existingAdvice)
+                    setErrorMessage("")
+                } else {
+                    setErrorMessage(
+                        "Failed to finalize Payment Advice. Please check the selected batch and bank."
+                    )
+                }
+            } catch (lookupError) {
+                console.error(
+                    "Failed to retrieve existing advice:",
+                    lookupError,
+                )
+
+                setErrorMessage(
+                    "Failed to finalize Payment Advice. Please check the selected batch and bank."
+                )
+            }
+        } finally {
+            setFinalizing(false)
+        }
+    }
+
+    // ---------------------------------------------------------
+// CANCEL FINALIZED PAYMENT ADVICE
+// ---------------------------------------------------------
+
+    const handleCancelAdvice = async () => {
+        if (!selectedFinalizedAdvice) {
+            return
+        }
+
+        const reason = window.prompt(
+            "Enter the reason for cancelling this Payment Advice:"
+        )
+
+        if (reason === null) {
+            return
+        }
+
+        if (!reason.trim()) {
+            setErrorMessage("Cancellation reason is mandatory.")
+            return
+        }
+
+        try {
+            setCancelling(true)
+            setErrorMessage("")
+
+            await cancelPaymentAdvice(
+                selectedFinalizedAdvice.id,
+                {
+                    cancellationReason: reason.trim(),
+                }
+            )
+
+            const updatedAdvice = await getFinalizedPaymentAdvice(
+                selectedFinalizedAdvice.id
+            )
+
+            setSelectedFinalizedAdvice(updatedAdvice)
+        } catch (error) {
             console.error(error)
 
             setErrorMessage(
-                "Failed to export Payment Advice.",
+                "Failed to cancel Payment Advice."
             )
-
         } finally {
-
-            setExporting(false)
+            setCancelling(false)
         }
     }
 
@@ -710,6 +906,50 @@ export default function PaymentAdvice() {
     // UI
     // ---------------------------------------------------------
 
+    // ---------------------------------------------------------
+// GROUP PAYMENT ADVICE RECORDS BY EMPLOYEE
+// ---------------------------------------------------------
+
+    const groupedRecords = records.reduce<
+        Array<{
+            key: string
+            employee: PaymentAdviceRecord
+            payments: PaymentAdviceRecord[]
+            totalNetPayment: number
+        }>
+    >((groups, record) => {
+        const key = String(
+            record.employeeCode ||
+            record.employeeName ||
+            record.paymentId,
+        )
+
+        let group = groups.find(
+            (item) => item.key === key,
+        )
+
+        if (!group) {
+            group = {
+                key,
+                employee: record,
+                payments: [],
+                totalNetPayment: 0,
+            }
+
+            groups.push(group)
+        }
+
+        group.payments.push(record)
+        group.totalNetPayment += Number(
+            record.netPayment || 0,
+        )
+
+        return groups
+    }, [])
+
+
+
+
     return (
         <>
             <style>{`
@@ -731,13 +971,13 @@ export default function PaymentAdvice() {
 
                     <div>
 
-                        <div className="mb-2 flex items-center gap-2 text-xs font-semibold uppercase tracking-wider text-primary">
+                        {/*<div className="mb-2 flex items-center gap-2 text-xs font-semibold uppercase tracking-wider text-primary">*/}
 
-                            <Landmark className="h-4 w-4" />
+                        {/*    <Landmark className="h-4 w-4" />*/}
 
-                            Financial Records
+                        {/*    Financial Records*/}
 
-                        </div>
+                        {/*</div>*/}
 
                         <h2 className="text-3xl font-bold tracking-tight text-slate-900">
                             Payment Advice
@@ -747,6 +987,20 @@ export default function PaymentAdvice() {
 
 
                     <div className="flex flex-wrap gap-2">
+
+                        <Button
+                            type="button"
+                            onClick={() => void handleFinalizeAdvice()}
+                            disabled={
+                                finalizing ||
+                                loading ||
+                                !paymentBatchId ||
+                                !bankId
+                            }
+                            className="shadow-sm"
+                        >
+                            {finalizing ? "Finalizing..." : "Finalize Advice"}
+                        </Button>
 
                         <Button
                             type="button"
@@ -772,6 +1026,16 @@ export default function PaymentAdvice() {
 
                         <PrintButton
                             title="Payment Advice"
+                            companyName={import.meta.env.VITE_COMPANY_NAME || "Company Name"}
+                            companySubtitle={import.meta.env.VITE_COMPANY_SUBTITLE || "Location"}
+                            companyLogoUrl="/branding/comfed-logo.jpeg"
+                            adviceDate={
+                                selectedFinalizedAdvice?.adviceDate ||
+                                new Date().toLocaleDateString("en-GB").replaceAll("/", ".")
+                            }
+                            adviceReferenceNo={
+                                selectedFinalizedAdvice?.referenceNo || ""
+                            }
                         />
 
                     </div>
@@ -818,74 +1082,74 @@ export default function PaymentAdvice() {
                         <div className="grid gap-5 md:grid-cols-2 xl:grid-cols-3">
 
 
-                            {/* Payment Period */}
+                            {/*/!* Payment Period *!/*/}
 
-                            <div className="space-y-2">
+                            {/*<div className="space-y-2">*/}
 
-                                <Label
-                                    htmlFor="advicePeriod"
-                                    className="text-xs font-semibold text-slate-600"
-                                >
-                                    Payment Period
-                                </Label>
+                            {/*    <Label*/}
+                            {/*        htmlFor="advicePeriod"*/}
+                            {/*        className="text-xs font-semibold text-slate-600"*/}
+                            {/*    >*/}
+                            {/*        Payment Period*/}
+                            {/*    </Label>*/}
 
-                                <div className="relative">
+                            {/*    <div className="relative">*/}
 
-                                    <select
-                                        id="advicePeriod"
-                                        value={
-                                            paymentPeriodId
-                                        }
-                                        onChange={(event) => {
+                            {/*        <select*/}
+                            {/*            id="advicePeriod"*/}
+                            {/*            value={*/}
+                            {/*                paymentPeriodId*/}
+                            {/*            }*/}
+                            {/*            onChange={(event) => {*/}
 
-                                            setPaymentPeriodId(
-                                                event.target.value,
-                                            )
+                            {/*                setPaymentPeriodId(*/}
+                            {/*                    event.target.value,*/}
+                            {/*                )*/}
 
-                                            setCurrentPage(
-                                                0,
-                                            )
-                                        }}
-                                        className={
-                                            selectClassName
-                                        }
-                                    >
+                            {/*                setCurrentPage(*/}
+                            {/*                    0,*/}
+                            {/*                )*/}
+                            {/*            }}*/}
+                            {/*            className={*/}
+                            {/*                selectClassName*/}
+                            {/*            }*/}
+                            {/*        >*/}
 
-                                        <option value="">
-                                            All Payment Periods
-                                        </option>
+                            {/*            <option value="">*/}
+                            {/*                All Payment Periods*/}
+                            {/*            </option>*/}
 
-                                        {paymentPeriods.map(
-                                            (period) => (
+                            {/*            {paymentPeriods.map(*/}
+                            {/*                (period) => (*/}
 
-                                                <option
-                                                    key={
-                                                        period.id
-                                                    }
-                                                    value={
-                                                        period.id
-                                                    }
-                                                >
-                                                    {formatPeriod(
-                                                        period.month,
-                                                        period.year,
-                                                    )}{" "}
-                                                    —{" "}
-                                                    {
-                                                        period.status
-                                                    }
-                                                </option>
+                            {/*                    <option*/}
+                            {/*                        key={*/}
+                            {/*                            period.id*/}
+                            {/*                        }*/}
+                            {/*                        value={*/}
+                            {/*                            period.id*/}
+                            {/*                        }*/}
+                            {/*                    >*/}
+                            {/*                        {formatPeriod(*/}
+                            {/*                            period.month,*/}
+                            {/*                            period.year,*/}
+                            {/*                        )}{" "}*/}
+                            {/*                        —{" "}*/}
+                            {/*                        {*/}
+                            {/*                            period.status*/}
+                            {/*                        }*/}
+                            {/*                    </option>*/}
 
-                                            ),
-                                        )}
+                            {/*                ),*/}
+                            {/*            )}*/}
 
-                                    </select>
+                            {/*        </select>*/}
 
-                                    <ChevronDown className="pointer-events-none absolute right-3 top-1/2 h-4 w-4 -translate-y-1/2 text-slate-400" />
+                            {/*        <ChevronDown className="pointer-events-none absolute right-3 top-1/2 h-4 w-4 -translate-y-1/2 text-slate-400" />*/}
 
-                                </div>
+                            {/*    </div>*/}
 
-                            </div>
+                            {/*</div>*/}
 
 
                             {/* Employee Code */}
@@ -1333,7 +1597,6 @@ export default function PaymentAdvice() {
 
                             </div>
 
-
                             {/* Category */}
 
                             <div className="space-y-2">
@@ -1401,6 +1664,40 @@ export default function PaymentAdvice() {
                             </div>
 
 
+                            {/* Payment Batch */}
+                            <div className="space-y-2">
+                                <Label
+                                    htmlFor="advicePaymentBatch"
+                                    className="text-xs font-semibold text-slate-600"
+                                >
+                                    Payment Batch
+                                </Label>
+
+                                <div className="relative">
+                                    <select
+                                        id="advicePaymentBatch"
+                                        value={paymentBatchId}
+                                        onChange={(event) => {
+                                            setPaymentBatchId(event.target.value)
+                                            setCurrentPage(0)
+                                        }}
+                                        className={selectClassName}
+                                    >
+                                        <option value="">All Payment Batches</option>
+
+                                        {paymentBatches.map((batch) => (
+                                            <option key={batch.id} value={batch.id}>
+                                                {batch.batchName} — {batch.status}
+                                            </option>
+                                        ))}
+                                    </select>
+
+                                    <ChevronDown className="pointer-events-none absolute right-3 top-1/2 h-4 w-4 -translate-y-1/2 text-slate-400" />
+                                </div>
+                            </div>
+
+
+
                             {/* Bank */}
 
                             <div className="space-y-2">
@@ -1465,54 +1762,56 @@ export default function PaymentAdvice() {
 
                             </div>
 
+
+                            {/* Filter Actions */}
+
+                            <div className="mt-6 flex justify-end">
+
+                                <div className="flex flex-wrap justify-end gap-2">
+
+                                    <Button
+                                        type="button"
+                                        variant="ghost"
+                                        onClick={
+                                            clearFilters
+                                        }
+                                        disabled={
+                                            loading ||
+                                            refreshing
+                                        }
+                                        className="text-slate-600 hover:bg-slate-100"
+                                    >
+
+                                        <X className="mr-2 h-4 w-4" />
+
+                                        Clear
+
+                                    </Button>
+
+
+                                    <Button
+                                        type="button"
+                                        onClick={
+                                            handleSearch
+                                        }
+                                        disabled={
+                                            loading ||
+                                            refreshing
+                                        }
+                                        className="shadow-sm"
+                                    >
+
+                                        <Search className="mr-2 h-4 w-4" />
+
+                                        Search
+
+                                    </Button>
+
+                                </div>
                         </div>
 
 
-                        {/* Filter Actions */}
 
-                        <div className="mt-6 flex justify-end border-t border-slate-100 pt-5">
-
-                            <div className="flex flex-wrap justify-end gap-2">
-
-                                <Button
-                                    type="button"
-                                    variant="ghost"
-                                    onClick={
-                                        clearFilters
-                                    }
-                                    disabled={
-                                        loading ||
-                                        refreshing
-                                    }
-                                    className="text-slate-600 hover:bg-slate-100"
-                                >
-
-                                    <X className="mr-2 h-4 w-4" />
-
-                                    Clear
-
-                                </Button>
-
-
-                                <Button
-                                    type="button"
-                                    onClick={
-                                        handleSearch
-                                    }
-                                    disabled={
-                                        loading ||
-                                        refreshing
-                                    }
-                                    className="shadow-sm"
-                                >
-
-                                    <Search className="mr-2 h-4 w-4" />
-
-                                    Search
-
-                                </Button>
-
-                            </div>
 
                         </div>
 
@@ -1521,18 +1820,70 @@ export default function PaymentAdvice() {
                 </section>
 
 
+                {selectedFinalizedAdvice && (
+                    <section className="rounded-2xl border border-slate-200 bg-white p-5 shadow-sm">
+                        <div className="flex flex-col gap-4 sm:flex-row sm:items-center sm:justify-between">
+                            <div>
+                                <h3 className="text-sm font-semibold text-slate-900">
+                                    Finalized Payment Advice
+                                </h3>
+
+                                <p className="mt-2 text-sm text-slate-600">
+                                    Reference Number:{" "}
+                                    <span className="font-bold text-primary">
+                        {selectedFinalizedAdvice.referenceNo}
+                    </span>
+                                </p>
+
+                                <p className="mt-1 text-xs text-slate-500">
+                                    Bank: {selectedFinalizedAdvice.bankName}
+                                    {" · "}
+                                    Date: {selectedFinalizedAdvice.adviceDate}
+                                    {" · "}
+                                    Payments: {selectedFinalizedAdvice.payments.length}
+                                </p>
+
+                                <p className="mt-2 text-xs font-semibold">
+                                    Status: {selectedFinalizedAdvice.status}
+                                </p>
+                            </div>
+
+                            {selectedFinalizedAdvice.status === "FINALIZED" && (
+                                <Button
+                                    type="button"
+                                    variant="destructive"
+                                    onClick={() => void handleCancelAdvice()}
+                                    disabled={cancelling}
+                                >
+                                    {cancelling ? "Cancelling..." : "Cancel Advice"}
+                                </Button>
+                            )}
+                        </div>
+
+                        {selectedFinalizedAdvice.status === "CANCELLED" && (
+                            <p className="mt-3 text-sm text-red-600">
+                                Cancellation reason:{" "}
+                                {selectedFinalizedAdvice.cancellationReason}
+                            </p>
+                        )}
+                    </section>
+                )}
+
+
+
+
+
                 {/* -------------------------------------------------
-                    PAYMENT ADVICE RECORDS
-                ------------------------------------------------- */}
+    PAYMENT ADVICE RECORDS
+------------------------------------------------- */}
 
                 <section className="overflow-hidden rounded-2xl border border-slate-200 bg-white shadow-sm">
 
-                    {/* Records Header */}
+                    {/* RECORDS HEADER */}
 
                     <div className="flex flex-col gap-3 border-b border-slate-100 px-5 py-4 md:flex-row md:items-center md:justify-between md:px-6">
 
                         <div>
-
                             <div className="flex items-center gap-2">
 
                                 <h3 className="text-sm font-semibold text-slate-900">
@@ -1540,82 +1891,62 @@ export default function PaymentAdvice() {
                                 </h3>
 
                                 {refreshing && (
-
                                     <span className="inline-flex items-center gap-1.5 rounded-full bg-primary/10 px-2.5 py-1 text-[11px] font-semibold text-primary">
-
-                                        <span className="h-1.5 w-1.5 animate-pulse rounded-full bg-primary" />
-
-                                        Updating
-
-                                    </span>
-
+                        <span className="h-1.5 w-1.5 animate-pulse rounded-full bg-primary" />
+                        Updating
+                    </span>
                                 )}
 
                             </div>
 
-
                             <p className="mt-1 text-xs text-slate-500">
-
                                 {totalElements} payment advice record
-                                {totalElements === 1
-                                    ? ""
-                                    : "s"} found
-
+                                {totalElements === 1 ? "" : "s"} found
                             </p>
-
                         </div>
 
-
                         <div className="flex items-center gap-2 rounded-lg bg-slate-50 px-3 py-2 text-xs font-medium text-slate-500">
-
                             <FileText className="h-3.5 w-3.5" />
 
-                            Page{" "}
-
-                            {totalPages === 0
-                                ? 0
-                                : currentPage + 1}
-
-                            {" "}of{" "}
-
-                            {totalPages}
-
+                            Page {totalPages === 0 ? 0 : currentPage + 1} of {totalPages}
                         </div>
 
                     </div>
 
 
-                    {/* Records Content */}
+                    {/* RECORDS CONTENT */}
 
                     <div className="p-3 md:p-4">
 
                         {loading ? (
 
-                            <div className="flex min-h-[260px] flex-col items-center justify-center gap-3 text-center">
+                            <div className="flex min-h-[300px] flex-col items-center justify-center gap-3 text-center">
 
                                 <div className="h-8 w-8 animate-spin rounded-full border-2 border-slate-200 border-t-primary" />
 
-                                <p className="text-sm font-medium text-slate-700">
-                                    Loading payment advice
-                                </p>
+                                <div>
+                                    <p className="text-sm font-medium text-slate-700">
+                                        Loading payment advice
+                                    </p>
+
+                                    <p className="mt-1 text-xs text-slate-400">
+                                        Please wait…
+                                    </p>
+                                </div>
 
                             </div>
 
                         ) : records.length === 0 ? (
 
-                            <div className="flex min-h-[260px] flex-col items-center justify-center text-center">
+                            <div className="flex min-h-[300px] flex-col items-center justify-center text-center">
 
                                 <div className="flex h-12 w-12 items-center justify-center rounded-2xl bg-slate-100 text-slate-400">
-
                                     <FileText className="h-5 w-5" />
-
                                 </div>
-
 
                                 <p className="mt-4 text-sm font-semibold text-slate-700">
                                     No payment advice found
                                 </p>
-
 
                                 <p className="mt-1 max-w-sm text-xs leading-5 text-slate-400">
                                     Try changing the selected filters or search for another employee.
@@ -1627,34 +1958,27 @@ export default function PaymentAdvice() {
 
                             <>
 
+                                {/* MAIN EMPLOYEE TABLE */}
+
                                 <div className="overflow-x-auto rounded-xl border border-slate-100">
 
-                                    <table className="w-full min-w-[1250px] text-sm">
+                                    <table className="w-full min-w-[1300px] text-sm">
 
                                         <thead>
-
                                         <tr className="bg-slate-50 text-slate-500">
 
-                                            <th className="px-4 py-3.5 text-left text-xs font-semibold uppercase tracking-wide">
-                                                Employee Code
-                                            </th>
+                                            <th className="w-10 px-3 py-3.5"></th>
 
                                             <th className="px-4 py-3.5 text-left text-xs font-semibold uppercase tracking-wide">
-                                                Employee Name
+                                                Employee
                                             </th>
-
-                                            {/* PAN */}
 
                                             <th className="px-4 py-3.5 text-left text-xs font-semibold uppercase tracking-wide">
                                                 PAN
                                             </th>
 
                                             <th className="px-4 py-3.5 text-left text-xs font-semibold uppercase tracking-wide">
-                                                Period
-                                            </th>
-
-                                            <th className="px-4 py-3.5 text-left text-xs font-semibold uppercase tracking-wide">
-                                                Bank
+                                                Bank Name
                                             </th>
 
                                             <th className="px-4 py-3.5 text-left text-xs font-semibold uppercase tracking-wide">
@@ -1665,169 +1989,246 @@ export default function PaymentAdvice() {
                                                 IFSC
                                             </th>
 
-                                            <th className="px-4 py-3.5 text-left text-xs font-semibold uppercase tracking-wide">
-                                                Category
+                                            <th className="px-4 py-3.5 text-center text-xs font-semibold uppercase tracking-wide">
+                                                Payment Records
                                             </th>
 
                                             <th className="px-4 py-3.5 text-right text-xs font-semibold uppercase tracking-wide">
-                                                Net Payment
-                                            </th>
-
-                                            <th className="print:hidden px-4 py-3.5 text-left text-xs font-semibold uppercase tracking-wide">
-                                                Status
+                                                Total Net Payment
                                             </th>
 
                                         </tr>
-
                                         </thead>
 
 
                                         <tbody>
 
-                                        {records.map(
-                                            (record) => (
+                                        {groupedRecords.map((group) => {
 
-                                                <tr
-                                                    key={
-                                                        record.paymentId
-                                                    }
-                                                    className="border-t border-slate-100 transition-colors hover:bg-slate-50/70"
-                                                >
+                                            const isExpanded =
+                                                expandedEmployees.has(group.key)
 
-                                                    {/* Employee Code */}
+                                            return (
 
-                                                    <td className="px-4 py-4">
+                                                <Fragment key={group.key}>
 
-                                                        <div className="font-semibold text-slate-800">
-                                                            {
-                                                                record.employeeCode
-                                                            }
-                                                        </div>
+                                                    {/* EMPLOYEE SUMMARY ROW */}
 
-                                                    </td>
+                                                    <tr
+                                                        onClick={() => {
 
+                                                            setExpandedEmployees((previous) => {
 
-                                                    {/* Employee Name */}
+                                                                const next = new Set(previous)
 
-                                                    <td className="px-4 py-4">
+                                                                if (next.has(group.key)) {
+                                                                    next.delete(group.key)
+                                                                } else {
+                                                                    next.add(group.key)
+                                                                }
 
-                                                        <div className="mt-0.5 text-xs text-slate-500">
-                                                            {
-                                                                record.employeeName
-                                                            }
-                                                        </div>
+                                                                return next
+                                                            })
 
-                                                    </td>
+                                                        }}
+                                                        className="cursor-pointer border-t border-slate-100 transition-colors hover:bg-slate-50"
+                                                        aria-expanded={isExpanded}
+                                                    >
 
+                                                        {/* EXPAND */}
 
-                                                    {/* PAN */}
-
-                                                    <td className="px-4 py-4">
-
-                                                        <div className="font-small uppercase tracking-wide text-slate-700">
-                                                            {
-                                                                record.panNumber
-                                                            }
-                                                        </div>
-
-                                                    </td>
-
-
-                                                    {/* Period */}
-
-                                                    <td className="px-4 py-4 font-medium text-slate-600">
-
-                                                        {formatPeriod(
-                                                            record.month,
-                                                            record.year,
-                                                        )}
-
-                                                    </td>
-
-
-                                                    {/* Bank */}
-
-                                                    <td className="px-4 py-4 text-slate-600">
-
-                                                        {
-                                                            record.bankName ??
-                                                            "-"
-                                                        }
-
-                                                    </td>
-
-
-                                                    {/* Account Number */}
-
-                                                    <td className="px-4 py-4 font-mono text-xs text-slate-600">
-
-                                                        {
-                                                            record.accountNumber
-                                                        }
-
-                                                    </td>
-
-
-                                                    {/* IFSC */}
-
-                                                    <td className="px-4 py-4 font-mono text-xs font-medium text-slate-600">
-
-                                                        {
-                                                            record.ifscCode ||
-                                                            "-"
-                                                        }
-
-                                                    </td>
-
-
-                                                    {/* Category */}
-
-                                                    <td className="px-4 py-4">
-
-                                                        <span className="inline-flex rounded-lg bg-slate-100 px-2.5 py-1.5 text-xs font-medium text-slate-600">
-
-                                                            {
-                                                                record.categoryName
-                                                            }
-
-                                                        </span>
-
-                                                    </td>
-
-
-                                                    {/* Net Payment */}
-
-                                                    <td className="px-4 py-4 text-right">
-
-                                                        <span className="inline-flex rounded-lg bg-emerald-50 px-2.5 py-1.5 font-bold tabular-nums text-emerald-700">
-
-                                                            {formatCurrency(
-                                                                record.netPayment,
+                                                        <td className="px-3 py-4 text-slate-500">
+                                                            {isExpanded ? (
+                                                                <ChevronDown className="h-4 w-4" />
+                                                            ) : (
+                                                                <ChevronRight className="h-4 w-4" />
                                                             )}
+                                                        </td>
 
+
+                                                        {/* EMPLOYEE */}
+
+                                                        <td className="px-4 py-4">
+
+                                                            <div className="font-semibold text-slate-900">
+                                                                {group.employee.employeeName || "—"}
+                                                            </div>
+
+                                                            <div className="mt-1 text-xs text-slate-500">
+                                                                Code: {group.employee.employeeCode || "—"}
+                                                            </div>
+
+                                                        </td>
+
+
+                                                        {/* PAN */}
+
+                                                        <td className="px-4 py-4 text-slate-600">
+                                                            {group.employee.panNumber || "—"}
+                                                        </td>
+
+
+                                                        {/* BANK NAME */}
+
+                                                        <td className="px-4 py-4 font-medium text-slate-700">
+                                                            {group.employee.bankName || "—"}
+                                                        </td>
+
+
+                                                        {/* ACCOUNT NUMBER */}
+
+                                                        <td className="whitespace-nowrap px-4 py-4 font-mono text-xs text-slate-600">
+                                                            {group.employee.accountNumber || "—"}
+                                                        </td>
+
+
+                                                        {/* IFSC */}
+
+                                                        <td className="whitespace-nowrap px-4 py-4 font-mono text-xs text-slate-600">
+                                                            {group.employee.ifscCode || "—"}
+                                                        </td>
+
+
+                                                        {/* PAYMENT RECORD COUNT */}
+
+                                                        <td className="px-4 py-4 text-center">
+
+                                                <span className="rounded-full bg-emerald-50 px-2.5 py-1 text-xs font-semibold text-emerald-700">
+                                                    {group.payments.length}
+                                                </span>
+
+                                                        </td>
+
+
+                                                        {/* TOTAL NET PAYMENT */}
+
+                                                        <td className="px-4 py-4 text-right">
+
+                                                <span className="inline-flex rounded-lg bg-emerald-50 px-3 py-2 font-bold tabular-nums text-emerald-700">
+                                                    {formatCurrency(group.totalNetPayment)}
+                                                </span>
+
+                                                        </td>
+
+                                                    </tr>
+
+
+                                                    {/* EXPANDED MONTHLY PAYMENT DETAILS */}
+
+                                                    {isExpanded && (
+
+                                                        <tr className="border-t border-slate-100 bg-slate-50/70">
+
+                                                            <td colSpan={8} className="px-4 py-4 md:px-8">
+
+                                                                <div className="mb-3 flex flex-wrap items-center justify-between gap-2">
+
+                                                                    <div>
+                                                                        <h4 className="text-sm font-semibold text-slate-800">
+                                                                            Monthly payment details
+                                                                        </h4>
+
+                                                                        <p className="mt-1 text-xs text-slate-500">
+                                                                            {group.employee.employeeName || "—"}
+                                                                            {" · "}
+                                                                            {group.employee.employeeCode || "—"}
+                                                                        </p>
+                                                                    </div>
+
+                                                                    <span className="text-xs text-slate-500">
+                                                            {group.payments.length} payment record(s)
                                                         </span>
 
-                                                    </td>
+                                                                </div>
 
 
-                                                    {/* Internal Status */}
+                                                                {/* MONTHLY TABLE — SUMMARY STYLE */}
 
-                                                    <td className="payment-advice-print-hide px-4 py-4">
+                                                                <div className="overflow-x-auto rounded-lg border border-slate-200 bg-white">
 
-                                                        <span className="inline-flex items-center gap-1.5 rounded-full bg-slate-100 px-2.5 py-1 text-xs font-medium text-slate-600">
+                                                                    <table className="w-full min-w-[900px] text-xs">
 
-                                                            {
-                                                                record.status
-                                                            }
+                                                                        <thead>
 
-                                                        </span>
+                                                                        <tr className="bg-white text-slate-500">
 
-                                                    </td>
+                                                                            <th className="px-3 py-3 text-left font-semibold uppercase tracking-wide">
+                                                                                Payment Period
+                                                                            </th>
 
-                                                </tr>
+                                                                            <th className="px-3 py-3 text-left font-semibold uppercase tracking-wide">
+                                                                                TA Months Covered
+                                                                            </th>
 
-                                            ),
-                                        )}
+                                                                            <th className="px-3 py-3 text-right font-semibold uppercase tracking-wide">
+                                                                                Net Payment
+                                                                            </th>
+
+                                                                            <th className="payment-advice-print-hide px-3 py-3 text-left font-semibold uppercase tracking-wide">
+                                                                                Status
+                                                                            </th>
+
+                                                                        </tr>
+
+                                                                        </thead>
+
+
+                                                                        <tbody>
+
+                                                                        {group.payments.map((payment) => (
+
+                                                                            <tr
+                                                                                key={payment.paymentId}
+                                                                                className="border-t border-slate-100 transition-colors hover:bg-slate-50"
+                                                                            >
+
+                                                                                <td className="whitespace-nowrap px-3 py-3 font-medium text-slate-700">
+                                                                                    {formatPeriod(
+                                                                                        payment.month,
+                                                                                        payment.year
+                                                                                    )}
+                                                                                </td>
+
+                                                                                <td className="whitespace-nowrap px-3 py-3 text-slate-600">
+                                                                                    {payment.taMonthsCovered ||
+                                                                                        formatPeriod(
+                                                                                            payment.month,
+                                                                                            payment.year
+                                                                                        )}
+                                                                                </td>
+
+                                                                                <td className="whitespace-nowrap px-3 py-3 text-right font-semibold tabular-nums text-emerald-700">
+                                                                                    {formatCurrency(payment.netPayment)}
+                                                                                </td>
+
+                                                                                <td className="payment-advice-print-hide px-3 py-3">
+
+                                                                            <span className="inline-flex rounded-full bg-emerald-50 px-2 py-1 text-[10px] font-semibold text-emerald-700">
+                                                                                {payment.status}
+                                                                            </span>
+
+                                                                                </td>
+
+                                                                            </tr>
+
+                                                                        ))}
+
+                                                                        </tbody>
+
+                                                                    </table>
+
+                                                                </div>
+
+                                                            </td>
+
+                                                        </tr>
+
+                                                    )}
+
+                                                </Fragment>
+
+                                            )
+                                        })}
 
                                         </tbody>
 
@@ -1836,7 +2237,7 @@ export default function PaymentAdvice() {
                                 </div>
 
 
-                                {/* Pagination */}
+                                {/* PAGINATION — SUMMARY STYLE */}
 
                                 <div className="flex flex-col gap-4 px-1 pt-5 sm:flex-row sm:items-center sm:justify-between">
 
@@ -1845,20 +2246,20 @@ export default function PaymentAdvice() {
                                         Showing{" "}
 
                                         <span className="font-semibold text-slate-700">
-                                            {firstRecord}
-                                        </span>
+                            {firstRecord}
+                        </span>
 
                                         {" – "}
 
                                         <span className="font-semibold text-slate-700">
-                                            {lastRecord}
-                                        </span>
+                            {lastRecord}
+                        </span>
 
                                         {" "}of{" "}
 
                                         <span className="font-semibold text-slate-700">
-                                            {totalElements}
-                                        </span>
+                            {totalElements}
+                        </span>
 
                                         {" "}payment advice records
 
@@ -1871,58 +2272,38 @@ export default function PaymentAdvice() {
                                             type="button"
                                             variant="outline"
                                             size="sm"
-                                            onClick={
-                                                goToPreviousPage
-                                            }
+                                            onClick={goToPreviousPage}
                                             disabled={
-                                                currentPage ===
-                                                0 ||
+                                                currentPage === 0 ||
                                                 loading ||
                                                 refreshing
                                             }
                                             className="border-slate-200 bg-white"
                                         >
-
                                             <ChevronLeft className="mr-1 h-4 w-4" />
-
                                             Previous
-
                                         </Button>
 
 
                                         <span className="min-w-[90px] rounded-lg bg-slate-50 px-3 py-2 text-center text-xs font-medium text-slate-600">
-
-                                            Page{" "}
-
-                                            {currentPage + 1}
-
-                                            {" "}of{" "}
-
-                                            {totalPages}
-
-                                        </span>
+                            Page {currentPage + 1} of {totalPages}
+                        </span>
 
 
                                         <Button
                                             type="button"
                                             variant="outline"
                                             size="sm"
-                                            onClick={
-                                                goToNextPage
-                                            }
+                                            onClick={goToNextPage}
                                             disabled={
-                                                currentPage >=
-                                                totalPages - 1 ||
+                                                currentPage >= totalPages - 1 ||
                                                 loading ||
                                                 refreshing
                                             }
                                             className="border-slate-200 bg-white"
                                         >
-
                                             Next
-
                                             <ChevronRight className="ml-1 h-4 w-4" />
-
                                         </Button>
 
                                     </div>
@@ -1937,7 +2318,39 @@ export default function PaymentAdvice() {
 
                 </section>
 
+
+
             </div>
+                {/* PRINT-ONLY BANK PAYMENT ADVICE */}
+
+            <div className="hidden">
+                <table data-print-table="payment-advice">
+                    <thead>
+                    <tr>
+                        <th>Employee Code</th>
+                        <th>Employee Name</th>
+                        <th>Bank Name</th>
+                        <th>Account Number</th>
+                        <th>IFSC Code</th>
+                        <th>Net Payment</th>
+                    </tr>
+                    </thead>
+
+                    <tbody>
+                    {records.map(record => (
+                        <tr key={record.paymentId}>
+                            <td>{record.employeeCode || "-"}</td>
+                            <td>{record.employeeName || "-"}</td>
+                            <td>{record.bankName || "-"}</td>
+                            <td>{record.accountNumber || "-"}</td>
+                            <td>{record.ifscCode || "-"}</td>
+                            <td>{formatCurrency(record.netPayment)}</td>
+                        </tr>
+                    ))}
+                    </tbody>
+                </table>
+            </div>
+
         </>
     )
 }

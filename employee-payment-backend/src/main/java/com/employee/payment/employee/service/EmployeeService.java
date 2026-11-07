@@ -15,7 +15,10 @@ import org.springframework.data.domain.Pageable;
 import org.springframework.data.domain.Sort;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
+import com.employee.payment.employee.repository.EmployeeSpecification;
 import java.util.List;
+import java.time.LocalDate;
+
 
 @Service
 @Transactional
@@ -131,6 +134,20 @@ public class EmployeeService {
                 request.dateOfJoining()
         );
 
+        // Payment tracking start month
+        LocalDate trackingStartMonth = request.paymentTrackingStartMonth();
+
+        if (trackingStartMonth == null
+                && request.dateOfJoining() != null) {
+            trackingStartMonth = request.dateOfJoining();
+        }
+
+        employee.setPaymentTrackingStartMonth(
+                trackingStartMonth != null
+                        ? trackingStartMonth.withDayOfMonth(1)
+                        : null
+        );
+
         // ============================================================
         // EXISTING EMPLOYEE DETAILS
         // ============================================================
@@ -190,6 +207,56 @@ public class EmployeeService {
                 .map(this::toResponse);
     }
 
+    @Transactional(readOnly = true)
+    public Page<EmployeeResponse> getFilteredEmployees(
+            Long categoryId,
+            Long bankId,
+            String search,
+            Pageable pageable
+    ) {
+
+        String normalizedSearch =
+                search == null || search.isBlank()
+                        ? null
+                        : search.trim();
+
+        return employeeRepository
+                .findByFilters(
+                        categoryId,
+                        bankId,
+                        normalizedSearch,
+                        pageable
+                )
+                .map(this::toResponse);
+    }
+
+
+    @Transactional(readOnly = true)
+    public List<EmployeeResponse> getFilteredEmployeesForExport(
+            Long categoryId,
+            Long bankId,
+            String search
+    ) {
+        String normalizedSearch =
+                search == null || search.isBlank()
+                        ? null
+                        : search.trim();
+
+        return employeeRepository.findAll(
+                        EmployeeSpecification.withFilters(
+                                categoryId,
+                                bankId,
+                                normalizedSearch
+                        ),
+                        Sort.by(
+                                Sort.Order.asc("employeeCodeSort"),
+                                Sort.Order.asc("id")
+                        )
+                )
+                .stream()
+                .map(this::toResponse)
+                .toList();
+    }
 
     // ============================================================
 // GET ALL EMPLOYEES FOR EXPORT
@@ -337,6 +404,15 @@ public class EmployeeService {
                 request.dateOfJoining()
         );
 
+        // Update tracking month only when one is supplied.
+// Otherwise, preserve the existing configuration.
+        if (request.paymentTrackingStartMonth() != null) {
+            employee.setPaymentTrackingStartMonth(
+                    request.paymentTrackingStartMonth()
+                            .withDayOfMonth(1)
+            );
+        }
+
         // ============================================================
         // EXISTING EMPLOYEE DETAILS
         // ============================================================
@@ -457,6 +533,7 @@ public class EmployeeService {
                 employee.getAadhaar(),
                 employee.getDateOfBirth(),
                 employee.getDateOfJoining(),
+                employee.getPaymentTrackingStartMonth(),
 
                 // ====================================================
                 // EXISTING EMPLOYEE DETAILS

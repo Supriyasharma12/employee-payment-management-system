@@ -1,7 +1,7 @@
-import { useCallback, useEffect, useRef, useState } from "react"
+import { Fragment, useCallback, useEffect, useMemo, useRef, useState } from "react"
 
 import {
-    CheckCircle2,
+
     ChevronDown,
     ChevronLeft,
     ChevronRight,
@@ -14,9 +14,15 @@ import {
 
 import {
     exportPaymentSummary,
-    getPaymentSummary,
+    getMonthlyPaymentSummary,
     type PaymentSummary as PaymentSummaryRecord,
 } from "@/api/paymentSummary"
+
+import {
+    getPaymentAdviceBatches,
+    type PaymentAdviceBatch,
+} from "@/api/paymentAdvice"
+
 
 import {
     getBanks,
@@ -28,10 +34,10 @@ import {
     type EmployeeCategory,
 } from "@/api/employees"
 
-import {
-    getPaymentPeriods,
-    type PaymentPeriod,
-} from "@/api/payment"
+// import {
+//     getPaymentPeriods,
+//     type PaymentPeriod,
+// } from "@/api/payment"
 
 import { getApiErrorMessage } from "@/api/error"
 import { Button } from "@/components/ui/button"
@@ -39,12 +45,79 @@ import { Input } from "@/components/ui/input"
 import { Label } from "@/components/ui/label"
 import PrintButton from "@/components/PrintButton"
 
+type EmployeePaymentGroup = {
+    employeeId: number
+    employeeCode: string
+    employeeName: string
+    panNumber: string
+    payments: PaymentSummaryRecord[]
+    approvedMonths: number
+    runningTa: number
+    fixedTa: number
+    other: number
+    grossTotal: number
+    deductionTotal: number
+    netPayment: number
+}
+
+
+const groupApprovedPayments = (
+    records: PaymentSummaryRecord[],
+): EmployeePaymentGroup[] => {
+    const groups = new Map<number, EmployeePaymentGroup>()
+
+    for (const payment of records) {
+        if (payment.status?.toUpperCase() !== "APPROVED") continue
+
+        const employeeId = payment.employeeId
+        let group = groups.get(employeeId)
+
+        if (!group) {
+            group = {
+                employeeId,
+                employeeCode: payment.employeeCode ?? "",
+                employeeName: payment.employeeName ?? "",
+                panNumber: payment.panNumber ?? "",
+                payments: [],
+                approvedMonths: 0,
+                runningTa: 0,
+                fixedTa: 0,
+                other: 0,
+                grossTotal: 0,
+                deductionTotal: 0,
+                netPayment: 0,
+            }
+            groups.set(employeeId, group)
+        }
+
+        group.payments.push(payment)
+        group.approvedMonths += 1
+        group.runningTa += Number(payment.runningTa ?? 0)
+        group.fixedTa += Number(payment.fixedTa ?? 0)
+        group.other += Number(payment.other ?? 0)
+        group.grossTotal += Number(payment.grossTotal ?? 0)
+        group.deductionTotal += Number(payment.deductionTotal ?? 0)
+        group.netPayment += Number(payment.netPayment ?? 0)
+    }
+
+    return Array.from(groups.values()).sort((a, b) =>
+        a.employeeCode.localeCompare(b.employeeCode, undefined, { numeric: true }),
+    )
+}
+
 export default function PaymentSummary() {
     const [payments, setPayments] =
         useState<PaymentSummaryRecord[]>([])
 
-    const [paymentPeriods, setPaymentPeriods] =
-        useState<PaymentPeriod[]>([])
+    // const [paymentPeriods, setPaymentPeriods] =
+    //     useState<PaymentPeriod[]>([])
+
+
+    const [paymentBatches, setPaymentBatches] =
+        useState<PaymentAdviceBatch[]>([])
+
+    const [paymentBatchId, setPaymentBatchId] =
+        useState("")
 
     const [categories, setCategories] =
         useState<EmployeeCategory[]>([])
@@ -52,8 +125,8 @@ export default function PaymentSummary() {
     const [banks, setBanks] =
         useState<Bank[]>([])
 
-    const [paymentPeriodId, setPaymentPeriodId] =
-        useState("")
+    // const [paymentPeriodId, setPaymentPeriodId] =
+    //     useState("")
 
     const [employeeCode, setEmployeeCode] =
         useState("")
@@ -102,6 +175,37 @@ export default function PaymentSummary() {
     const [errorMessage, setErrorMessage] =
         useState("")
 
+    const [expandedEmployees, setExpandedEmployees] = useState<Set<number>>(
+        new Set(),
+    )
+
+    const toggleEmployee = (employeeId: number) => {
+        setExpandedEmployees((previous) => {
+            const next = new Set(previous)
+
+            if (next.has(employeeId)) {
+                next.delete(employeeId)
+            } else {
+                next.add(employeeId)
+            }
+
+            return next
+        })
+    }
+
+    const employeeGroups = useMemo(
+        () => groupApprovedPayments(payments),
+        [payments],
+    )
+
+    const visibleEmployeeGroups = useMemo(
+        () => employeeGroups.slice(
+            currentPage * pageSize,
+            (currentPage + 1) * pageSize,
+        ),
+        [employeeGroups, currentPage],
+    )
+
     // ---------------------------------------------------------
     // LOAD FILTER DATA
     // ---------------------------------------------------------
@@ -110,16 +214,16 @@ export default function PaymentSummary() {
         const loadFilterData = async () => {
             try {
                 const [
-                    periods,
+                    // periods,
                     employeeCategories,
                     employeeBanks,
                 ] = await Promise.all([
-                    getPaymentPeriods(),
+                    // getPaymentPeriods(),
                     getEmployeeCategories(),
                     getBanks(),
                 ])
 
-                setPaymentPeriods(periods)
+                // setPaymentPeriods(periods)
                 setCategories(employeeCategories)
                 setBanks(employeeBanks)
             } catch (error) {
@@ -131,6 +235,13 @@ export default function PaymentSummary() {
                         "Failed to load summary filters.",
                     ),
                 )
+            }
+            try {
+                const batches = await getPaymentAdviceBatches()
+                setPaymentBatches(batches)
+            } catch (batchError) {
+                console.error("Failed to load payment batches.", batchError)
+                setPaymentBatches([])
             }
         }
 
@@ -156,50 +267,37 @@ export default function PaymentSummary() {
                 setErrorMessage("")
 
                 const data =
-                    await getPaymentSummary(
-                        page,
-                        pageSize,
-                        {
-                            paymentPeriodId:
-                                paymentPeriodId
-                                    ? Number(paymentPeriodId)
-                                    : undefined,
+                    await getMonthlyPaymentSummary({
+                        // paymentPeriodId:
+                        //     paymentPeriodId
+                        //         ? Number(paymentPeriodId)
+                        //         : undefined,
+                        categoryId:
+                            categoryId
+                                ? Number(categoryId)
+                                : undefined,
+                        bankId:
+                            bankId
+                                ? Number(bankId)
+                                : undefined,
+                        employeeCode: employeeCode.trim() || undefined,
+                        employeeName: employeeName.trim() || undefined,
 
-                            categoryId:
-                                categoryId
-                                    ? Number(categoryId)
-                                    : undefined,
+                        paymentBatchId: paymentBatchId
+                            ? Number(paymentBatchId)
+                            : undefined,
+                    })
 
-                            bankId:
-                                bankId
-                                    ? Number(bankId)
-                                    : undefined,
-
-                            employeeCode:
-                                employeeCode.trim() ||
-                                undefined,
-
-                            employeeName:
-                                employeeName.trim() ||
-                                undefined,
-                        },
-                    )
-
-                setPayments(
-                    data.content ?? [],
+                const approvedRecords = (data ?? []).filter(
+                    (payment) => payment.status?.toUpperCase() === "APPROVED",
                 )
+                const groups = groupApprovedPayments(approvedRecords)
 
-                setCurrentPage(
-                    data.number,
-                )
-
-                setTotalPages(
-                    data.totalPages,
-                )
-
-                setTotalElements(
-                    data.totalElements,
-                )
+                setPayments(approvedRecords)
+                setCurrentPage(Math.min(page, Math.max(groups.length ? Math.ceil(groups.length / pageSize) - 1 : 0, 0)))
+                setTotalPages(Math.ceil(groups.length / pageSize))
+                setTotalElements(groups.length)
+                setExpandedEmployees(new Set())
             } catch (error) {
                 console.error(error)
 
@@ -228,7 +326,8 @@ export default function PaymentSummary() {
             categoryId,
             employeeCode,
             employeeName,
-            paymentPeriodId,
+            // paymentPeriodId,
+            paymentBatchId,
         ],
     )
 
@@ -373,6 +472,24 @@ export default function PaymentSummary() {
     ])
 
     // ---------------------------------------------------------
+// AUTO-SEARCH WHEN DROPDOWN FILTERS CHANGE
+// ---------------------------------------------------------
+    useEffect(() => {
+        const timer = window.setTimeout(() => {
+            void loadSummary(0, true)
+        }, 0)
+
+        return () => {
+            window.clearTimeout(timer)
+        }
+    }, [
+        paymentBatchId,
+        categoryId,
+        bankId,
+        loadSummary,
+    ])
+
+    // ---------------------------------------------------------
     // SEARCH
     // ---------------------------------------------------------
 
@@ -392,7 +509,8 @@ export default function PaymentSummary() {
     // ---------------------------------------------------------
 
     const clearFilters = () => {
-        setPaymentPeriodId("")
+        // setPaymentPeriodId("")
+        setPaymentBatchId("")
         setEmployeeCode("")
         setEmployeeName("")
         setCategoryId("")
@@ -505,11 +623,16 @@ export default function PaymentSummary() {
 
             const blob =
                 await exportPaymentSummary({
-                    paymentPeriodId:
-                        paymentPeriodId
-                            ? Number(
-                                paymentPeriodId,
-                            )
+                    // paymentPeriodId:
+                    //     paymentPeriodId
+                    //         ? Number(
+                    //             paymentPeriodId,
+                    //         )
+                    //         : undefined,
+
+                    paymentBatchId:
+                        paymentBatchId
+                            ? Number(paymentBatchId)
                             : undefined,
 
                     categoryId:
@@ -609,10 +732,10 @@ export default function PaymentSummary() {
             <div className="flex flex-col gap-4 lg:flex-row lg:items-end lg:justify-between">
 
                 <div>
-                    <div className="mb-2 flex items-center gap-2 text-xs font-semibold uppercase tracking-wider text-primary">
-                        <FileText className="h-4 w-4" />
-                        Financial Records
-                    </div>
+                    {/*<div className="mb-2 flex items-center gap-2 text-xs font-semibold uppercase tracking-wider text-primary">*/}
+                    {/*    <FileText className="h-4 w-4" />*/}
+                    {/*    Financial Records*/}
+                    {/*</div>*/}
 
                     <h2 className="text-3xl font-bold tracking-tight text-slate-900">
                         Payment Summary
@@ -646,6 +769,9 @@ export default function PaymentSummary() {
 
                     <PrintButton
                         title="Payment Summary"
+                        companyName={import.meta.env.VITE_COMPANY_NAME || "Company Name"}
+                        companySubtitle={import.meta.env.VITE_COMPANY_SUBTITLE || "Location"}
+                        companyLogoUrl="/branding/comfed-logo.jpeg"
                     />
 
                 </div>
@@ -664,93 +790,84 @@ export default function PaymentSummary() {
 
             {/* FILTERS */}
 
-            <section className="rounded-2xl border border-slate-200 bg-white shadow-sm">
+            <section className="overflow-visible rounded-2xl border border-slate-200 bg-white shadow-sm">
 
-                <div className="flex flex-col gap-1 border-b border-slate-100 bg-slate-50/70 px-5 py-4 md:flex-row md:items-center md:justify-between md:px-6">
+                <div className="border-b border-slate-100 bg-slate-50/60 px-5 py-4 md:px-6">
 
-                    <div>
-                        <h3 className="text-sm font-semibold text-slate-900">
-                            Filters
-                        </h3>
-                    </div>
-
-                    {refreshing && (
-                        <span className="text-xs font-semibold text-primary">
-                            Updating results…
-                        </span>
-                    )}
+                    <h3 className="text-sm font-semibold text-slate-900">
+                        Filters
+                    </h3>
 
                 </div>
 
-                <div className="px-5 py-4 md:px-6">
+                <div className="px-5 py-5 md:px-6">
 
-                    <div className="grid gap-4 md:grid-cols-2 xl:grid-cols-3">
+                    <div className="grid gap-5 md:grid-cols-2 xl:grid-cols-3">
+                        {/*/!* PAYMENT PERIOD *!/*/}
 
-                        {/* PAYMENT PERIOD */}
+                        {/*<div className="space-y-2">*/}
 
-                        <div className="space-y-2">
+                        {/*    <Label*/}
+                        {/*        htmlFor="summaryPeriod"*/}
+                        {/*        className="text-xs font-semibold text-slate-600"*/}
+                        {/*    >*/}
+                        {/*        Payment Period*/}
+                        {/*    </Label>*/}
 
-                            <Label
-                                htmlFor="summaryPeriod"
-                                className="text-xs font-semibold text-slate-600"
-                            >
-                                Payment Period
-                            </Label>
+                        {/*    <div className="relative">*/}
 
-                            <div className="relative">
+                        {/*        <select*/}
+                        {/*            id="summaryPeriod"*/}
+                        {/*            value={*/}
+                        {/*                paymentPeriodId*/}
+                        {/*            }*/}
+                        {/*            onChange={(*/}
+                        {/*                event,*/}
+                        {/*            ) =>*/}
+                        {/*                setPaymentPeriodId(*/}
+                        {/*                    event.target.value,*/}
+                        {/*                )*/}
+                        {/*            }*/}
+                        {/*            className={*/}
+                        {/*                selectClassName*/}
+                        {/*            }*/}
+                        {/*        >*/}
 
-                                <select
-                                    id="summaryPeriod"
-                                    value={
-                                        paymentPeriodId
-                                    }
-                                    onChange={(
-                                        event,
-                                    ) =>
-                                        setPaymentPeriodId(
-                                            event.target.value,
-                                        )
-                                    }
-                                    className={
-                                        selectClassName
-                                    }
-                                >
+                        {/*            <option value="">*/}
+                        {/*                All Payment Periods*/}
+                        {/*            </option>*/}
 
-                                    <option value="">
-                                        All Payment Periods
-                                    </option>
+                        {/*            {paymentPeriods.map(*/}
+                        {/*                (*/}
+                        {/*                    period,*/}
+                        {/*                ) => (*/}
+                        {/*                    <option*/}
+                        {/*                        key={*/}
+                        {/*                            period.id*/}
+                        {/*                        }*/}
+                        {/*                        value={*/}
+                        {/*                            period.id*/}
+                        {/*                        }*/}
+                        {/*                    >*/}
+                        {/*                        {formatPeriod(*/}
+                        {/*                            period.month,*/}
+                        {/*                            period.year,*/}
+                        {/*                        )}{" "}*/}
+                        {/*                        —{" "}*/}
+                        {/*                        {*/}
+                        {/*                            period.status*/}
+                        {/*                        }*/}
+                        {/*                    </option>*/}
+                        {/*                ),*/}
+                        {/*            )}*/}
 
-                                    {paymentPeriods.map(
-                                        (
-                                            period,
-                                        ) => (
-                                            <option
-                                                key={
-                                                    period.id
-                                                }
-                                                value={
-                                                    period.id
-                                                }
-                                            >
-                                                {formatPeriod(
-                                                    period.month,
-                                                    period.year,
-                                                )}{" "}
-                                                —{" "}
-                                                {
-                                                    period.status
-                                                }
-                                            </option>
-                                        ),
-                                    )}
+                        {/*        </select>*/}
 
-                                </select>
+                        {/*        <ChevronDown className="pointer-events-none absolute right-3 top-1/2 h-4 w-4 -translate-y-1/2 text-slate-400" />*/}
 
-                                <ChevronDown className="pointer-events-none absolute right-3 top-1/2 h-4 w-4 -translate-y-1/2 text-slate-400" />
+                        {/*    </div>*/}
 
-                            </div>
-
-                        </div>
+                        {/*</div>*/}
 
                         {/* EMPLOYEE CODE */}
 
@@ -1117,71 +1234,109 @@ export default function PaymentSummary() {
 
                         </div>
 
-                        {/* CATEGORY */}
-
                         <div className="space-y-2">
 
-                            <Label
-                                htmlFor="summaryCategory"
-                                className="text-xs font-semibold text-slate-600"
-                            >
-                                Category
-                            </Label>
+                            {/* CATEGORY */}
 
-                            <div className="relative">
+                            <div className="space-y-2">
 
-                                <select
-                                    id="summaryCategory"
-                                    value={
-                                        categoryId
-                                    }
-                                    onChange={(
-                                        event,
-                                    ) =>
-                                        setCategoryId(
-                                            event.target.value,
-                                        )
-                                    }
-                                    className={
-                                        selectClassName
-                                    }
+                                <Label
+                                    htmlFor="summaryCategory"
+                                    className="text-xs font-semibold text-slate-600"
                                 >
+                                    Category
+                                </Label>
 
-                                    <option value="">
-                                        All Categories
-                                    </option>
+                                <div className="relative">
 
-                                    {categories.map(
-                                        (
-                                            category,
-                                        ) => (
-                                            <option
-                                                key={
-                                                    category.id
-                                                }
-                                                value={
-                                                    category.id
-                                                }
-                                            >
-                                                {
-                                                    category.name
-                                                }
-                                            </option>
-                                        ),
-                                    )}
+                                    <select
+                                        id="summaryCategory"
+                                        value={
+                                            categoryId
+                                        }
+                                        onChange={(
+                                            event,
+                                        ) =>
+                                            setCategoryId(
+                                                event.target.value,
+                                            )
+                                        }
+                                        className={
+                                            selectClassName
+                                        }
+                                    >
 
-                                </select>
+                                        <option value="">
+                                            All Categories
+                                        </option>
 
-                                <ChevronDown className="pointer-events-none absolute right-3 top-1/2 h-4 w-4 -translate-y-1/2 text-slate-400" />
+                                        {categories.map(
+                                            (
+                                                category,
+                                            ) => (
+                                                <option
+                                                    key={
+                                                        category.id
+                                                    }
+                                                    value={
+                                                        category.id
+                                                    }
+                                                >
+                                                    {
+                                                        category.name
+                                                    }
+                                                </option>
+                                            ),
+                                        )}
+
+                                    </select>
+
+                                    <ChevronDown className="pointer-events-none absolute right-3 top-1/2 h-4 w-4 -translate-y-1/2 text-slate-400" />
+
+                                </div>
 
                             </div>
-
                         </div>
+                            {/* PAYMENT BATCH */}
+                            <div className="space-y-2">
+                                <Label
+                                    htmlFor="summaryPaymentBatch"
+                                    className="text-xs font-semibold text-slate-600"
+                                >
+                                    Payment Batch
+                                </Label>
+
+                                <div className="relative">
+                                    <select
+                                        id="summaryPaymentBatch"
+                                        value={paymentBatchId}
+                                        onChange={(event) => {
+                                            setPaymentBatchId(event.target.value)
+                                        }}
+                                        className={selectClassName}
+                                    >
+                                        <option value="">All Batches</option>
+
+                                        {paymentBatches.map((batch) => (
+                                            <option
+                                                key={batch.id}
+                                                value={String(batch.id)}
+                                            >
+                                                {batch.batchName} — {batch.status}
+                                            </option>
+                                        ))}
+                                    </select>
+
+                                    <ChevronDown className="pointer-events-none absolute right-3 top-1/2 h-4 w-4 -translate-y-1/2 text-slate-400" />
+                                </div>
+                            </div>
+
+
+
 
                         {/* BANK */}
 
                         <div className="space-y-2">
-
                             <Label
                                 htmlFor="summaryBank"
                                 className="text-xs font-semibold text-slate-600"
@@ -1190,101 +1345,143 @@ export default function PaymentSummary() {
                             </Label>
 
                             <div className="relative">
-
                                 <select
                                     id="summaryBank"
-                                    value={
-                                        bankId
+                                    value={bankId}
+                                    onChange={(event) =>
+                                        setBankId(event.target.value)
                                     }
-                                    onChange={(
-                                        event,
-                                    ) =>
-                                        setBankId(
-                                            event.target.value,
-                                        )
-                                    }
-                                    className={
-                                        selectClassName
-                                    }
+                                    className={selectClassName}
                                 >
+                                    <option value="">All Banks</option>
 
-                                    <option value="">
-                                        All Banks
-                                    </option>
-
-                                    {banks.map(
-                                        (
-                                            bank,
-                                        ) => (
-                                            <option
-                                                key={
-                                                    bank.id
-                                                }
-                                                value={
-                                                    bank.id
-                                                }
-                                            >
-                                                {
-                                                    bank.bankName
-                                                }
-                                            </option>
-                                        ),
-                                    )}
-
+                                    {banks.map((bank) => (
+                                        <option
+                                            key={bank.id}
+                                            value={bank.id}
+                                        >
+                                            {bank.bankName}
+                                        </option>
+                                    ))}
                                 </select>
 
                                 <ChevronDown className="pointer-events-none absolute right-3 top-1/2 h-4 w-4 -translate-y-1/2 text-slate-400" />
+                            </div>
+                        </div>
+                        {/* Filter Actions */}
+
+                        <div className="mt-6 flex justify-end">
+
+                            <div className="flex flex-wrap justify-end gap-2">
+
+                                <Button
+                                    type="button"
+                                    variant="ghost"
+                                    onClick={
+                                        clearFilters
+                                    }
+                                    disabled={
+                                        loading ||
+                                        refreshing
+                                    }
+                                    className="text-slate-600 hover:bg-slate-100"
+                                >
+
+                                    <X className="mr-2 h-4 w-4" />
+
+                                    Clear
+
+                                </Button>
+
+
+                                <Button
+                                    type="button"
+                                    onClick={
+                                        handleSearch
+                                    }
+                                    disabled={
+                                        loading ||
+                                        refreshing
+                                    }
+                                    className="shadow-sm"
+                                >
+
+                                    <Search className="mr-2 h-4 w-4" />
+
+                                    Search
+
+                                </Button>
 
                             </div>
-
                         </div>
 
                     </div>
-
-                    {/* FILTER ACTIONS */}
-
-                    <div className="mt-4 flex justify-end border-t border-slate-100 pt-4">
-
-                        <div className="flex flex-wrap justify-end gap-2">
-
-                            <Button
-                                type="button"
-                                variant="ghost"
-                                onClick={
-                                    clearFilters
-                                }
-                                disabled={
-                                    loading ||
-                                    refreshing
-                                }
-                                className="text-slate-600 hover:bg-slate-100"
-                            >
-                                <X className="mr-2 h-4 w-4" />
-                                Clear
-                            </Button>
-
-                            <Button
-                                type="button"
-                                onClick={
-                                    handleSearch
-                                }
-                                disabled={
-                                    loading ||
-                                    refreshing
-                                }
-                                className="shadow-sm"
-                            >
-                                <Search className="mr-2 h-4 w-4" />
-                                Search
-                            </Button>
-
-                        </div>
-
-                    </div>
-
                 </div>
 
             </section>
+
+
+            {/* PRINT-ONLY PAYMENT SUMMARY — SAME FLAT RECORDS AS EXCEL */}
+            <div className="hidden">
+                <table data-print-table="payment-summary">
+                    <thead>
+                    <tr>
+                        <th>Employee Code</th>
+                        <th>Employee Name</th>
+                        <th>PAN</th>
+                        <th>Period</th>
+                        <th>Running TA</th>
+                        <th>Fixed TA</th>
+                        <th>Other</th>
+                        <th>Gross Total</th>
+                        <th>Miscellaneous</th>
+                        <th>Advance TA</th>
+                        <th>Advance Other</th>
+                        <th>Deduction Total</th>
+                        <th>Net Payment</th>
+                        <th>Status</th>
+                    </tr>
+                    </thead>
+
+                    <tbody>
+                    {[...payments]
+                        .sort((a, b) =>
+                            a.employeeCode.localeCompare(
+                                b.employeeCode,
+                                undefined,
+                                { numeric: true },
+                            ) ||
+                            (a.year ?? 0) - (b.year ?? 0) ||
+                            (a.month ?? 0) - (b.month ?? 0)
+                        )
+                        .map((payment) => (
+                            <tr
+                                key={`${payment.paymentId}-${payment.year}-${payment.month}`}
+                            >
+                                <td>{payment.employeeCode}</td>
+                                <td>{payment.employeeName}</td>
+                                <td>{payment.panNumber || ""}</td>
+                                <td>
+                                    {formatPeriod(
+                                        payment.month ?? 0,
+                                        payment.year ?? 0,
+                                    )}
+                                </td>
+                                <td>{Number(payment.runningTa ?? 0).toFixed(2)}</td>
+                                <td>{Number(payment.fixedTa ?? 0).toFixed(2)}</td>
+                                <td>{Number(payment.other ?? 0).toFixed(2)}</td>
+                                <td>{Number(payment.grossTotal ?? 0).toFixed(2)}</td>
+                                <td>{Number(payment.miscellaneous ?? 0).toFixed(2)}</td>
+                                <td>{Number(payment.advanceTa ?? 0).toFixed(2)}</td>
+                                <td>{Number(payment.advanceOther ?? 0).toFixed(2)}</td>
+                                <td>{Number(payment.deductionTotal ?? 0).toFixed(2)}</td>
+                                <td>{Number(payment.netPayment ?? 0).toFixed(2)}</td>
+                                <td>{payment.status?.toUpperCase() ?? ""}</td>
+                            </tr>
+                        ))}
+                    </tbody>
+                </table>
+            </div>
 
             {/* PAYMENT RECORDS */}
 
@@ -1310,11 +1507,8 @@ export default function PaymentSummary() {
                         </div>
 
                         <p className="mt-1 text-xs text-slate-500">
-                            {totalElements} payment record
-                            {totalElements === 1
-                                ? ""
-                                : "s"}{" "}
-                            found
+                            {totalElements} employee
+                            {totalElements === 1 ? "" : "s"} with approved payments
                         </p>
 
                     </div>
@@ -1378,215 +1572,110 @@ export default function PaymentSummary() {
 
                             <div className="overflow-x-auto rounded-xl border border-slate-100">
 
-                                <table className="w-full min-w-[1200px] text-sm">
-
+                                <table className="w-full min-w-[1050px] text-sm">
                                     <thead>
-
                                     <tr className="bg-slate-50 text-slate-500">
-
-                                        <th className="px-4 py-3.5 text-left text-xs font-semibold uppercase tracking-wide">
-                                            Employee Code
-                                        </th>
-
-                                        <th className="px-4 py-3.5 text-left text-xs font-semibold uppercase tracking-wide">
-                                            Employee Name
-                                        </th>
-
-                                        {/* PAN */}
-                                        <th className="px-4 py-3.5 text-left text-xs font-semibold uppercase tracking-wide">
-                                            PAN
-                                        </th>
-
-                                        <th className="px-4 py-3.5 text-left text-xs font-semibold uppercase tracking-wide">
-                                            Period
-                                        </th>
-
-                                        <th className="px-4 py-3.5 text-right text-xs font-semibold uppercase tracking-wide">
-                                            Running TA
-                                        </th>
-
-                                        <th className="px-4 py-3.5 text-right text-xs font-semibold uppercase tracking-wide">
-                                            Fixed TA
-                                        </th>
-
-                                        <th className="px-4 py-3.5 text-right text-xs font-semibold uppercase tracking-wide">
-                                            Other
-                                        </th>
-
-                                        <th className="px-4 py-3.5 text-right text-xs font-semibold uppercase tracking-wide">
-                                            Gross Total
-                                        </th>
-
-                                        <th className="px-4 py-3.5 text-right text-xs font-semibold uppercase tracking-wide">
-                                            Deduction Total
-                                        </th>
-
-                                        <th className="px-4 py-3.5 text-right text-xs font-semibold uppercase tracking-wide">
-                                            Net Payment
-                                        </th>
-
-                                        <th className="px-4 py-3.5 text-left text-xs font-semibold uppercase tracking-wide">
-                                            Status
-                                        </th>
-
+                                        <th className="w-10 px-3 py-3.5"></th>
+                                        <th className="px-4 py-3.5 text-left text-xs font-semibold uppercase tracking-wide">Employee</th>
+                                        <th className="px-4 py-3.5 text-left text-xs font-semibold uppercase tracking-wide">PAN</th>
+                                        <th className="px-4 py-3.5 text-center text-xs font-semibold uppercase tracking-wide">Approved Months</th>
+                                        <th className="px-4 py-3.5 text-right text-xs font-semibold uppercase tracking-wide">Gross Total</th>
+                                        <th className="px-4 py-3.5 text-right text-xs font-semibold uppercase tracking-wide">Deduction Total</th>
+                                        <th className="px-4 py-3.5 text-right text-xs font-semibold uppercase tracking-wide">Net Payment</th>
                                     </tr>
-
                                     </thead>
-
                                     <tbody>
+                                    {visibleEmployeeGroups.map((employee) => {
+                                        const isExpanded = expandedEmployees.has(employee.employeeId)
+                                        const monthlyPayments = [...employee.payments].sort(
+                                            (a, b) => (a.year ?? 0) - (b.year ?? 0) || (a.month ?? 0) - (b.month ?? 0),
+                                        )
 
-                                    {payments.map(
-                                        (
-                                            payment,
-                                        ) => (
-
-                                            <tr
-                                                key={
-                                                    payment.id
-                                                }
-                                                className="border-t border-slate-100 transition-colors hover:bg-slate-50/70"
-                                            >
-
-                                                {/* Employee Code */}
-
-                                                <td className="px-4 py-4">
-
-                                                    <div className="font-semibold text-slate-800">
-                                                        {
-                                                            payment.employeeCode
-                                                        }
-                                                    </div>
-
-                                                </td>
-
-                                                {/* Employee Name */}
-
-                                                <td className="px-4 py-4">
-
-                                                    <div className="font-medium text-slate-900">
-                                                        {
-                                                            payment.employeeName
-                                                        }
-                                                    </div>
-
-                                                </td>
-
-                                                {/* PAN */}
-
-                                                <td className="px-4 py-4">
-
-                                                    <div className="font-medium uppercase tracking-wide text-slate-700">
-                                                        {
-                                                            payment.panNumber ||
-                                                            "—"
-                                                        }
-                                                    </div>
-
-                                                </td>
-
-                                                {/* Period */}
-
-                                                <td className="px-4 py-4 font-medium text-slate-600">
-
-                                                    {formatPeriod(
-                                                        payment.month ??
-                                                        0,
-                                                        payment.year ??
-                                                        0,
-                                                    )}
-
-                                                </td>
-
-                                                {/* Running TA */}
-
-                                                <td className="px-4 py-4 text-right tabular-nums text-slate-600">
-
-                                                    {formatAmount(
-                                                        payment.runningTa,
-                                                    )}
-
-                                                </td>
-
-                                                {/* Fixed TA */}
-
-                                                <td className="px-4 py-4 text-right tabular-nums text-slate-600">
-
-                                                    {formatAmount(
-                                                        payment.fixedTa,
-                                                    )}
-
-                                                </td>
-
-                                                {/* Other */}
-
-                                                <td className="px-4 py-4 text-right tabular-nums text-slate-600">
-
-                                                    {formatAmount(
-                                                        payment.other,
-                                                    )}
-
-                                                </td>
-
-                                                {/* Gross Total */}
-
-                                                <td className="px-4 py-4 text-right tabular-nums font-semibold text-slate-800">
-
-                                                    {formatAmount(
-                                                        payment.grossTotal,
-                                                    )}
-
-                                                </td>
-
-                                                {/* Deduction Total */}
-
-                                                <td className="px-4 py-4 text-right tabular-nums text-slate-600">
-
-                                                    {formatAmount(
-                                                        payment.deductionTotal,
-                                                    )}
-
-                                                </td>
-
-                                                {/* Net Payment */}
-
-                                                <td className="px-4 py-4 text-right">
-
-                                                        <span className="inline-flex rounded-lg bg-emerald-50 px-2.5 py-1.5 font-bold tabular-nums text-emerald-700">
-
-                                                            {formatAmount(
-                                                                payment.netPayment,
-                                                            )}
-
-                                                        </span>
-
-                                                </td>
-
-                                                {/* Status */}
-
-                                                <td className="px-4 py-4">
-
-                                                        <span className="inline-flex items-center gap-1.5 rounded-full bg-slate-100 px-2.5 py-1 text-xs font-medium text-slate-600">
-
-                                                            {payment.status ===
-                                                                "ACTIVE" && (
-                                                                    <CheckCircle2 className="h-3.5 w-3.5 text-emerald-600" />
-                                                                )}
-
-                                                            {
-                                                                payment.status
-                                                            }
-
-                                                        </span>
-
-                                                </td>
-
-                                            </tr>
-
-                                        ),
-                                    )}
-
+                                        return (
+                                            <Fragment key={`employee-group-${employee.employeeId}`}>
+                                                <tr
+                                                    onClick={() => toggleEmployee(employee.employeeId)}
+                                                    className="cursor-pointer border-t border-slate-100 transition-colors hover:bg-slate-50"
+                                                    aria-expanded={isExpanded}
+                                                >
+                                                    <td className="px-3 py-4 text-slate-500">
+                                                        {isExpanded
+                                                            ? <ChevronDown className="h-4 w-4" />
+                                                            : <ChevronRight className="h-4 w-4" />}
+                                                    </td>
+                                                    <td className="px-4 py-4">
+                                                        <div className="font-semibold text-slate-900">{employee.employeeName || "—"}</div>
+                                                        <div className="mt-1 text-xs text-slate-500">Code: {employee.employeeCode || "—"}</div>
+                                                    </td>
+                                                    <td className="px-4 py-4 text-slate-600">{employee.panNumber || "—"}</td>
+                                                    <td className="px-4 py-4 text-center">
+                                                            <span className="rounded-full bg-emerald-50 px-2.5 py-1 text-xs font-semibold text-emerald-700">
+                                                                {employee.approvedMonths}
+                                                            </span>
+                                                    </td>
+                                                    <td className="px-4 py-4 text-right font-semibold tabular-nums text-slate-800">{formatAmount(employee.grossTotal)}</td>
+                                                    <td className="px-4 py-4 text-right tabular-nums text-slate-600">{formatAmount(employee.deductionTotal)}</td>
+                                                    <td className="px-4 py-4 text-right">
+                                                            <span className="inline-flex rounded-lg bg-emerald-50 px-3 py-2 font-bold tabular-nums text-emerald-700">
+                                                                {formatAmount(employee.netPayment)}
+                                                            </span>
+                                                    </td>
+                                                </tr>
+                                                {isExpanded && (
+                                                    <tr key={`details-${employee.employeeId}`} className="border-t border-slate-100 bg-slate-50/70">
+                                                        <td colSpan={7} className="px-4 py-4 md:px-8">
+                                                            <div className="mb-3 flex flex-wrap items-center justify-between gap-2">
+                                                                <div>
+                                                                    <h4 className="text-sm font-semibold text-slate-800">Monthly payment details</h4>
+                                                                    <p className="mt-1 text-xs text-slate-500">{employee.employeeName} · {employee.employeeCode}</p>
+                                                                </div>
+                                                                <span className="text-xs text-slate-500">{employee.approvedMonths} approved month(s)</span>
+                                                            </div>
+                                                            <div className="overflow-x-auto rounded-lg border border-slate-200 bg-white">
+                                                                <table className="w-full min-w-[900px] text-xs">
+                                                                    <thead>
+                                                                    <tr className="bg-white text-slate-500">
+                                                                        <th className="px-3 py-3 text-left font-semibold uppercase tracking-wide">Period</th>
+                                                                        <th className="px-3 py-3 text-right font-semibold uppercase tracking-wide">Running TA</th>
+                                                                        <th className="px-3 py-3 text-right font-semibold uppercase tracking-wide">Fixed TA</th>
+                                                                        <th className="px-3 py-3 text-right font-semibold uppercase tracking-wide">Other</th>
+                                                                        <th className="px-3 py-3 text-right font-semibold uppercase tracking-wide">Gross</th>
+                                                                        <th className="px-3 py-3 text-right font-semibold uppercase tracking-wide">Misc.</th>
+                                                                        <th className="px-3 py-3 text-right font-semibold uppercase tracking-wide">Advance TA</th>
+                                                                        <th className="px-3 py-3 text-right font-semibold uppercase tracking-wide">Advance Other</th>
+                                                                        <th className="px-3 py-3 text-right font-semibold uppercase tracking-wide">Deductions</th>
+                                                                        <th className="px-3 py-3 text-right font-semibold uppercase tracking-wide">Net Payment</th>
+                                                                        <th className="px-3 py-3 text-left font-semibold uppercase tracking-wide">Status</th>
+                                                                    </tr>
+                                                                    </thead>
+                                                                    <tbody>
+                                                                    {monthlyPayments.map((payment) => (
+                                                                        <tr key={`${payment.paymentId}-${payment.year}-${payment.month}`} className="border-t border-slate-100">
+                                                                            <td className="whitespace-nowrap px-3 py-3 font-medium text-slate-700">{formatPeriod(payment.month ?? 0, payment.year ?? 0)}</td>
+                                                                            <td className="px-3 py-3 text-right tabular-nums">{formatAmount(payment.runningTa)}</td>
+                                                                            <td className="px-3 py-3 text-right tabular-nums">{formatAmount(payment.fixedTa)}</td>
+                                                                            <td className="px-3 py-3 text-right tabular-nums">{formatAmount(payment.other)}</td>
+                                                                            <td className="px-3 py-3 text-right font-semibold tabular-nums">{formatAmount(payment.grossTotal)}</td>
+                                                                            <td className="px-3 py-3 text-right tabular-nums">{formatAmount(payment.miscellaneous)}</td>
+                                                                            <td className="px-3 py-3 text-right tabular-nums">{formatAmount(payment.advanceTa)}</td>
+                                                                            <td className="px-3 py-3 text-right tabular-nums">{formatAmount(payment.advanceOther)}</td>
+                                                                            <td className="px-3 py-3 text-right tabular-nums">{formatAmount(payment.deductionTotal)}</td>
+                                                                            <td className="px-3 py-3 text-right font-semibold tabular-nums text-emerald-700">{formatAmount(payment.netPayment)}</td>
+                                                                            <td className="px-3 py-3">
+                                                                                <span className="rounded-full bg-emerald-50 px-2 py-1 text-[10px] font-semibold text-emerald-700">APPROVED</span>
+                                                                            </td>
+                                                                        </tr>
+                                                                    ))}
+                                                                    </tbody>
+                                                                </table>
+                                                            </div>
+                                                        </td>
+                                                    </tr>
+                                                )}
+                                            </Fragment>
+                                        )
+                                    })}
                                     </tbody>
-
                                 </table>
 
                             </div>
@@ -1600,18 +1689,14 @@ export default function PaymentSummary() {
                                     Showing{" "}
 
                                     <span className="font-semibold text-slate-700">
-                                        {currentPage *
-                                            pageSize +
-                                            1}
+                                        {totalElements === 0 ? 0 : currentPage * pageSize + 1}
                                     </span>
 
                                     –
 
                                     <span className="font-semibold text-slate-700">
                                         {Math.min(
-                                            (currentPage +
-                                                1) *
-                                            pageSize,
+                                            (currentPage + 1) * pageSize,
                                             totalElements,
                                         )}
                                     </span>

@@ -50,20 +50,27 @@ public class EmployeeController {
     @GetMapping
     public Page<EmployeeResponse> getEmployees(
             @RequestParam(defaultValue = "0") int page,
-            @RequestParam(defaultValue = "10") int size
+            @RequestParam(defaultValue = "10") int size,
+            @RequestParam(required = false) Long categoryId,
+            @RequestParam(required = false) Long bankId,
+            @RequestParam(required = false) String search
     ) {
 
-        Pageable pageable =
-                PageRequest.of(
-                        page,
-                        size,
-                        Sort.by(
-                                Sort.Order.asc("employeeCodeSort"),
-                                Sort.Order.asc("id")
-                        )
-                );
+        Pageable pageable = PageRequest.of(
+                page,
+                size,
+                Sort.by(
+                        Sort.Order.asc("employeeCodeSort"),
+                        Sort.Order.asc("id")
+                )
+        );
 
-        return employeeService.getAll(pageable);
+        return employeeService.getFilteredEmployees(
+                categoryId,
+                bankId,
+                search,
+                pageable
+        );
     }
 
     // ============================================================
@@ -71,11 +78,18 @@ public class EmployeeController {
     // ============================================================
 
     @GetMapping("/export")
-    public ResponseEntity<byte[]> exportEmployees()
-            throws IOException {
+    public ResponseEntity<byte[]> exportEmployees(
+            @RequestParam(required = false) Long categoryId,
+            @RequestParam(required = false) Long bankId,
+            @RequestParam(required = false) String search
+    ) throws IOException {
 
         List<EmployeeResponse> employees =
-                employeeService.getAllForExport();
+                employeeService.getFilteredEmployeesForExport(
+                        categoryId,
+                        bankId,
+                        search
+                );
 
         byte[] excelFile =
                 employeeExcelExporter.export(employees);
@@ -92,6 +106,8 @@ public class EmployeeController {
                 )
                 .body(excelFile);
     }
+
+
 
     @GetMapping("/search/name")
     public Page<EmployeeResponse> searchByName(

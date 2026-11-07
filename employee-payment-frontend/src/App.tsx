@@ -10,7 +10,7 @@ import Employees from "@/pages/Employees"
 import Payments from "@/pages/Payments"
 import PaymentSummary from "@/pages/PaymentSummary"
 import PaymentAdvice from "@/pages/PaymentAdvice"
-import PaymentPeriods from "@/pages/PaymentPeriods"
+// import PaymentPeriods from "@/pages/PaymentPeriods"
 import AdminManagement from "@/pages/AdminManagement"
 import AuditLogs from "@/pages/AuditLogs"
 
@@ -87,15 +87,10 @@ function App() {
                     }
                 />
 
+                {/* V1 Payment Periods - hidden in V2 */}
                 <Route
                     path="/payment-periods"
-                    element={
-                        <ProtectedRoute>
-                            <AppLayout>
-                                <PaymentPeriods />
-                            </AppLayout>
-                        </ProtectedRoute>
-                    }
+                    element={<Navigate to="/payments" replace />}
                 />
 
                 <Route

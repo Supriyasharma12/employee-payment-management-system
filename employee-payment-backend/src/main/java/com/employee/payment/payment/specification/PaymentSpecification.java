@@ -11,17 +11,52 @@ public class PaymentSpecification {
     }
 
     // Filter by Payment Period
+
+    // Filter by Payment Period — supports V1 and V2
     public static Specification<Payment> hasPaymentPeriod(
             Long paymentPeriodId) {
 
-        return (root, query, criteriaBuilder) ->
-                paymentPeriodId == null
-                        ? null
-                        : criteriaBuilder.equal(
-                        root.get("paymentPeriod").get("id"),
-                        paymentPeriodId
-                );
+        return (root, query, criteriaBuilder) -> {
+
+            if (paymentPeriodId == null) {
+                return null;
+            }
+
+            // V1: payment period is stored on the parent payment.
+            var parentPeriodMatch = criteriaBuilder.and(
+                    criteriaBuilder.isNotNull(root.get("paymentPeriod")),
+                    criteriaBuilder.equal(
+                            root.get("paymentPeriod").get("id"),
+                            paymentPeriodId
+                    )
+            );
+
+            // V2: payment period is stored in monthly details.
+            var subquery = query.subquery(Long.class);
+            var detail = subquery.from(
+                    com.employee.payment.payment.entity.PaymentMonthlyDetail.class
+            );
+
+            subquery.select(detail.get("id"));
+
+            subquery.where(
+                    criteriaBuilder.equal(
+                            detail.get("payment").get("id"),
+                            root.get("id")
+                    ),
+                    criteriaBuilder.equal(
+                            detail.get("paymentPeriod").get("id"),
+                            paymentPeriodId
+                    )
+            );
+
+            return criteriaBuilder.or(
+                    parentPeriodMatch,
+                    criteriaBuilder.exists(subquery)
+            );
+        };
     }
+
 
     // Filter by Employee ID
     public static Specification<Payment> hasEmployee(
@@ -96,4 +131,16 @@ public class PaymentSpecification {
                         bankId
                 );
     }
+
+
+    // Exclude cancelled payments from the normal summary
+    public static Specification<Payment> isNotCancelled() {
+
+        return (root, query, criteriaBuilder) ->
+                criteriaBuilder.notEqual(
+                        criteriaBuilder.upper(root.get("status")),
+                        "CANCELLED"
+                );
+    }
+
 }

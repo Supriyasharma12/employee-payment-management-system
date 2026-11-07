@@ -61,6 +61,7 @@ export interface PaymentSummaryPage {
 
 export interface PaymentSummaryFilters {
     paymentPeriodId?: number
+    paymentBatchId?: number
     employeeId?: number
     bankId?: number
     categoryId?: number
@@ -96,6 +97,10 @@ export const getPaymentSummary = async (
     if (filters.paymentPeriodId !== undefined) {
         params.paymentPeriodId =
             filters.paymentPeriodId
+    }
+
+    if (filters.paymentBatchId !== undefined) {
+        params.paymentBatchId = filters.paymentBatchId
     }
 
     if (filters.employeeId !== undefined) {
@@ -165,6 +170,10 @@ export const exportPaymentSummary = async (
             filters.paymentPeriodId
     }
 
+    if (filters.paymentBatchId !== undefined) {
+        params.paymentBatchId = filters.paymentBatchId
+    }
+
     if (filters.employeeId !== undefined) {
         params.employeeId =
             filters.employeeId
@@ -199,5 +208,57 @@ export const exportPaymentSummary = async (
             },
         )
 
+
     return response.data
+}
+
+
+// ------------------------------------------
+// Get all monthly payment summary records
+// ------------------------------------------
+
+
+export const getMonthlyPaymentSummary = async (
+    filters: PaymentSummaryFilters = {},
+): Promise<PaymentSummary[]> => {
+    const params: Record<string, string | number> = {}
+
+    if (filters.paymentPeriodId !== undefined) {
+        params.paymentPeriodId = filters.paymentPeriodId
+    }
+
+    if (filters.paymentBatchId !== undefined) {
+        params.paymentBatchId = filters.paymentBatchId
+    }
+
+    if (filters.employeeId !== undefined) {
+        params.employeeId = filters.employeeId
+    }
+
+    if (filters.bankId !== undefined) {
+        params.bankId = filters.bankId
+    }
+
+    if (filters.categoryId !== undefined) {
+        params.categoryId = filters.categoryId
+    }
+
+    if (filters.employeeCode?.trim()) {
+        params.employeeCode = filters.employeeCode.trim()
+    }
+
+    if (filters.employeeName?.trim()) {
+        params.employeeName = filters.employeeName.trim()
+    }
+
+    const response = await apiClient.get<PaymentSummary[]>(
+        "/payments/monthly-summary",
+        { params },
+    )
+
+    return (response.data ?? []).map((payment) => ({
+        ...payment,
+        id: payment.id ?? payment.paymentId,
+        paymentId: payment.paymentId ?? payment.id,
+    }))
 }

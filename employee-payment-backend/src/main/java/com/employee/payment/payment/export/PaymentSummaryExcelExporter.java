@@ -55,7 +55,7 @@ public class PaymentSummaryExcelExporter {
             // ---------------------------------------------------------
 
             String[] headers = {
-                    "Payment ID",
+//                    "Payment ID",
                     "Employee Code",
                     "Employee Name",
                     "PAN",
@@ -84,24 +84,17 @@ public class PaymentSummaryExcelExporter {
             }
 
             // ---------------------------------------------------------
-            // DATA
-            // ---------------------------------------------------------
+// DATA
+// ---------------------------------------------------------
 
             int rowNumber = 1;
 
             for (PaymentSummaryResponse payment : payments) {
 
-                Row row =
-                        sheet.createRow(rowNumber++);
-
-                // Payment ID
-                row.createCell(0)
-                        .setCellValue(
-                                payment.paymentId()
-                        );
+                Row row = sheet.createRow(rowNumber++);
 
                 // Employee Code
-                row.createCell(1)
+                row.createCell(0)
                         .setCellValue(
                                 payment.employeeCode() != null
                                         ? payment.employeeCode()
@@ -109,7 +102,7 @@ public class PaymentSummaryExcelExporter {
                         );
 
                 // Employee Name
-                row.createCell(2)
+                row.createCell(1)
                         .setCellValue(
                                 payment.employeeName() != null
                                         ? payment.employeeName()
@@ -117,7 +110,7 @@ public class PaymentSummaryExcelExporter {
                         );
 
                 // PAN
-                row.createCell(3)
+                row.createCell(2)
                         .setCellValue(
                                 payment.panNumber() != null
                                         ? payment.panNumber()
@@ -125,82 +118,27 @@ public class PaymentSummaryExcelExporter {
                         );
 
                 // Period
-                String period =
-                        String.format(
-                                "%02d/%d",
-                                payment.month(),
-                                payment.year()
-                        );
+                String period = String.format(
+                        "%02d/%d",
+                        payment.month(),
+                        payment.year()
+                );
 
-                row.createCell(4)
-                        .setCellValue(period);
+                row.createCell(3).setCellValue(period);
 
                 // Amount fields
-                createAmountCell(
-                        row,
-                        5,
-                        payment.runningTa(),
-                        amountStyle
-                );
-
-                createAmountCell(
-                        row,
-                        6,
-                        payment.fixedTa(),
-                        amountStyle
-                );
-
-                createAmountCell(
-                        row,
-                        7,
-                        payment.other(),
-                        amountStyle
-                );
-
-                createAmountCell(
-                        row,
-                        8,
-                        payment.grossTotal(),
-                        amountStyle
-                );
-
-                createAmountCell(
-                        row,
-                        9,
-                        payment.miscellaneous(),
-                        amountStyle
-                );
-
-                createAmountCell(
-                        row,
-                        10,
-                        payment.advanceTa(),
-                        amountStyle
-                );
-
-                createAmountCell(
-                        row,
-                        11,
-                        payment.advanceOther(),
-                        amountStyle
-                );
-
-                createAmountCell(
-                        row,
-                        12,
-                        payment.deductionTotal(),
-                        amountStyle
-                );
-
-                createAmountCell(
-                        row,
-                        13,
-                        payment.netPayment(),
-                        amountStyle
-                );
+                createAmountCell(row, 4, payment.runningTa(), amountStyle);
+                createAmountCell(row, 5, payment.fixedTa(), amountStyle);
+                createAmountCell(row, 6, payment.other(), amountStyle);
+                createAmountCell(row, 7, payment.grossTotal(), amountStyle);
+                createAmountCell(row, 8, payment.miscellaneous(), amountStyle);
+                createAmountCell(row, 9, payment.advanceTa(), amountStyle);
+                createAmountCell(row, 10, payment.advanceOther(), amountStyle);
+                createAmountCell(row, 11, payment.deductionTotal(), amountStyle);
+                createAmountCell(row, 12, payment.netPayment(), amountStyle);
 
                 // Status
-                row.createCell(14)
+                row.createCell(13)
                         .setCellValue(
                                 payment.status() != null
                                         ? payment.status()

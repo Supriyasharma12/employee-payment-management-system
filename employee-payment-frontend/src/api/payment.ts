@@ -1,5 +1,6 @@
 import apiClient from "./client"
 
+
 // ------------------------------------------
 // Payment Period
 // ------------------------------------------
@@ -20,6 +21,7 @@ export interface PaymentPeriod {
 export interface PaymentCreateRequest {
     employeeId: number
     paymentPeriodId: number
+    paymentBatchId: number
     paymentDate: string
 
     runningTa: number
@@ -53,6 +55,8 @@ export interface PaymentUpdateRequest {
 
 export interface PaymentResponse {
     id: number
+    paymentBatchId: number | null
+
 
     employeeId: number
     employeeCode: string
@@ -80,6 +84,8 @@ export interface PaymentResponse {
 
     createdAt: string
     updatedAt: string
+
+    monthlyDetails?: PaymentMonthlyDetailResponse[]
 }
 
 // ------------------------------------------
@@ -154,4 +160,163 @@ export const approvePayment = async (
         )
 
     return response.data
+}
+
+
+
+export interface PaymentMonthlyDetailRequest {
+    paymentPeriodId: number
+
+    runningTa: number
+    fixedTa: number
+    other: number
+
+    miscellaneous: number
+    advanceTa: number
+    advanceOther: number
+}
+
+export interface PaymentMonthlyDetailResponse {
+    id: number
+    paymentPeriodId: number
+    month: number
+    year: number
+
+    runningTa: number
+    fixedTa: number
+    other: number
+    grossTotal: number
+
+    miscellaneous: number
+    advanceTa: number
+    advanceOther: number
+    deductionTotal: number
+
+    netPayment: number
+}
+
+export interface MultiMonthPaymentCreateRequest {
+    employeeId: number
+    paymentBatchId: number
+    paymentDate: string
+    monthlyDetails: PaymentMonthlyDetailRequest[]
+}
+
+export interface MonthlyPaymentResult {
+    paymentPeriodId: number
+    month: number
+    year: number
+    status: string
+    message: string
+    netPayment: number
+}
+
+export interface MultiMonthPaymentCreateResponse {
+    payment: PaymentResponse
+    monthlyResults: MonthlyPaymentResult[]
+    warnings: string[]
+}
+
+export const createMultiMonthPayment = async (
+    request: MultiMonthPaymentCreateRequest,
+): Promise<MultiMonthPaymentCreateResponse> => {
+    const response =
+        await apiClient.post<MultiMonthPaymentCreateResponse>(
+            "/payments/multi-month",
+            request,
+        )
+
+    return response.data
+}
+
+
+export interface EligiblePaymentPeriod {
+    id: number
+    month: number
+    year: number
+    status: string
+    eligible: boolean
+    reason: string | null
+}
+
+
+export interface MultiMonthPaymentUpdateRequest {
+    paymentDate: string
+    monthlyDetails: PaymentMonthlyDetailRequest[]
+}
+
+export const updateMultiMonthPayment = async (
+    paymentId: number,
+    request: MultiMonthPaymentUpdateRequest,
+): Promise<MultiMonthPaymentCreateResponse> => {
+    if (!paymentId) {
+        throw new Error(
+            "Payment ID is missing. Cannot update multi-month payment.",
+        )
+    }
+
+    const response =
+        await apiClient.put<MultiMonthPaymentCreateResponse>(
+            `/payments/multi-month/${paymentId}`,
+            request,
+        )
+
+    return response.data
+}
+
+
+export const getPaymentById = async (
+    paymentId: number,
+): Promise<PaymentResponse> => {
+    if (!paymentId) {
+        throw new Error(
+            "Payment ID is missing. Cannot load payment.",
+        )
+    }
+
+    const response = await apiClient.get<PaymentResponse>(
+        `/payments/${paymentId}`,
+    )
+
+    return response.data
+}
+
+export const getEligiblePaymentPeriods = async (
+    employeeId: number,
+    paymentId?: number,
+): Promise<EligiblePaymentPeriod[]> => {
+    const response = await apiClient.get<EligiblePaymentPeriod[]>(
+        "/payments/eligible-periods",
+        {
+            params: {
+                employeeId,
+                ...(paymentId !== undefined ? { paymentId } : {}),
+            },
+        },
+    );
+
+    return response.data;
+};
+
+
+export const getMultiMonthDraftsForEmployee = async (
+    employeeId: number,
+): Promise<PaymentResponse[]> => {
+    const response = await apiClient.get<PaymentResponse[]>(
+        `/payments/employee/${employeeId}/multi-month-drafts`,
+    );
+
+    return response.data;
+};
+
+export const getAllMultiMonthDrafts = async (): Promise<PaymentResponse[]> => {
+    const response = await apiClient.get<PaymentResponse[]>(
+        "/payments/multi-month-drafts",
+    );
+
+    return response.data;
+};
+
+export async function cancelDraftPayment(paymentId: number): Promise<void> {
+    await apiClient.patch(`/payments/${paymentId}/cancel`)
 }

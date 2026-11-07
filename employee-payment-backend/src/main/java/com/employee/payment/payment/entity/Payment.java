@@ -14,15 +14,15 @@ import java.time.LocalDateTime;
 @Entity
 @Table(
         name = "payments",
-        uniqueConstraints = {
-                @UniqueConstraint(
-                        name = "uq_employee_payment_period",
-                        columnNames = {
-                                "employee_id",
-                                "payment_period_id"
-                        }
-                )
-        },
+//        uniqueConstraints = {
+//                @UniqueConstraint(
+//                        name = "uq_employee_payment_period",
+//                        columnNames = {
+//                                "employee_id",
+//                                "payment_period_id"
+//                        }
+//                )
+//        },
         indexes = {
                 @Index(
                         name = "idx_payment_employee",
@@ -65,15 +65,35 @@ public class Payment {
     // PAYMENT PERIOD
     // ============================================================
 
-    @ManyToOne(fetch = FetchType.LAZY, optional = false)
+//    @ManyToOne(fetch = FetchType.LAZY, optional = false)
+//    @JoinColumn(
+//            name = "payment_period_id",
+//            nullable = false,
+//            foreignKey = @ForeignKey(
+//                    name = "fk_payment_period"
+//            )
+//    )
+//    private PaymentPeriod paymentPeriod;
+// Legacy payment period — retained for existing records.
+// New multi-month payments use payment_monthly_details.
+@ManyToOne(fetch = FetchType.LAZY)
+@JoinColumn(
+        name = "payment_period_id",
+        nullable = true,
+        foreignKey = @ForeignKey(name = "fk_payment_period")
+)
+private PaymentPeriod paymentPeriod;
+
+// ============================================================
+// PAYMENT BATCH
+// ============================================================
+
+    @ManyToOne(fetch = FetchType.LAZY)
     @JoinColumn(
-            name = "payment_period_id",
-            nullable = false,
-            foreignKey = @ForeignKey(
-                    name = "fk_payment_period"
-            )
+            name = "payment_batch_id",
+            foreignKey = @ForeignKey(name = "fk_payment_batch")
     )
-    private PaymentPeriod paymentPeriod;
+    private PaymentBatch paymentBatch;
 
     // ============================================================
     // PAYMENT DATE

@@ -20,13 +20,14 @@ export interface Employee {
     accountNumber: string
     ifscCode: string
 
-    // New employee details
+    // Employee details
     department: string
     medicalCardId: string
     uan: string
     aadhaar: string
     dateOfBirth: string
     dateOfJoining: string
+    paymentTrackingStartMonth: string | null
 
     phoneNumber: string
     email: string
@@ -49,13 +50,14 @@ export interface EmployeeRequest {
     accountNumber: string
     ifscCode: string
 
-    // New employee details
+    // Employee details
     department: string
     medicalCardId: string
     uan: string
     aadhaar: string
     dateOfBirth: string
     dateOfJoining: string
+    paymentTrackingStartMonth: string | null
 
     phoneNumber: string
     email: string
@@ -81,18 +83,36 @@ export interface EmployeePage {
 export const getEmployees = async (
     page = 0,
     size = 10,
+    categoryId = "",
+    bankId = "",
+    search = "",
 ): Promise<EmployeePage> => {
+    const params = new URLSearchParams({
+        page: String(page),
+        size: String(size),
+    })
+
+    if (categoryId) {
+        params.set("categoryId", categoryId)
+    }
+
+    if (bankId) {
+        params.set("bankId", bankId)
+    }
+
+    if (search.trim()) {
+        params.set("search", search.trim())
+    }
+
     const response = await apiClient.get<EmployeePage>(
-        `/employees?page=${page}&size=${size}`,
+        `/employees?${params.toString()}`,
     )
 
     return response.data
 }
 
-export const getEmployeeCategories = async (): Promise<
-    EmployeeCategory[]
-> => {
-    const response = await apiClient.get(
+export const getEmployeeCategories = async (): Promise<EmployeeCategory[]> => {
+    const response = await apiClient.get<EmployeeCategory[]>(
         "/employee-categories",
     )
 
@@ -100,15 +120,14 @@ export const getEmployeeCategories = async (): Promise<
 }
 
 export const getBanks = async (): Promise<Bank[]> => {
-    const response = await apiClient.get("/banks")
-
+    const response = await apiClient.get<Bank[]>("/banks")
     return response.data
 }
 
 export const createEmployee = async (
     employee: EmployeeRequest,
 ): Promise<Employee> => {
-    const response = await apiClient.post(
+    const response = await apiClient.post<Employee>(
         "/employees",
         employee,
     )
@@ -120,7 +139,7 @@ export const updateEmployee = async (
     id: number,
     employee: EmployeeRequest,
 ): Promise<Employee> => {
-    const response = await apiClient.put(
+    const response = await apiClient.put<Employee>(
         `/employees/${id}`,
         employee,
     )
@@ -128,9 +147,7 @@ export const updateEmployee = async (
     return response.data
 }
 
-export const activateEmployee = async (
-    id: number,
-) => {
+export const activateEmployee = async (id: number) => {
     const response = await apiClient.patch(
         `/employees/${id}/activate`,
     )
@@ -138,9 +155,7 @@ export const activateEmployee = async (
     return response.data
 }
 
-export const deactivateEmployee = async (
-    id: number,
-) => {
+export const deactivateEmployee = async (id: number) => {
     const response = await apiClient.patch(
         `/employees/${id}/deactivate`,
     )
@@ -172,9 +187,30 @@ export const searchEmployeesByCode = async (
     return response.data
 }
 
-export const exportEmployees = async (): Promise<Blob> => {
-    const response = await apiClient.get(
-        "/employees/export",
+
+export const exportEmployees = async (filters?: {
+    categoryId?: string
+    bankId?: string
+    search?: string
+}): Promise<Blob> => {
+    const params = new URLSearchParams()
+
+    if (filters?.categoryId) {
+        params.set("categoryId", filters.categoryId)
+    }
+
+    if (filters?.bankId) {
+        params.set("bankId", filters.bankId)
+    }
+
+    if (filters?.search?.trim()) {
+        params.set("search", filters.search.trim())
+    }
+
+    const queryString = params.toString()
+
+    const response = await apiClient.get<Blob>(
+        `/employees/export${queryString ? `?${queryString}` : ""}`,
         {
             responseType: "blob",
         },

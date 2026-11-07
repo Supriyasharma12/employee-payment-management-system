@@ -10,7 +10,6 @@ import {
     ScrollText,
     ShieldCheck,
     Users,
-    CalendarDays,
 } from "lucide-react"
 import { NavLink, useLocation } from "react-router-dom"
 
@@ -55,11 +54,11 @@ const mainNavigationItems = [
         url: "/payment-advice",
         icon: Landmark,
     },
-    {
-        title: "Payment Periods",
-        url: "/payment-periods",
-        icon: CalendarDays,
-    },
+    // {
+    //     title: "Payment Periods",
+    //     url: "/payment-periods",
+    //     icon: CalendarDays,
+    // },
 ]
 
 const administrationItems = [

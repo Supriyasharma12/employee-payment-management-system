@@ -7,7 +7,8 @@ import jakarta.validation.Valid;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.*;
-
+import org.springframework.format.annotation.DateTimeFormat;
+import java.time.YearMonth;
 import java.util.List;
 
 @RestController
@@ -44,5 +45,11 @@ public class PaymentPeriodController {
             @PathVariable Long id) {
 
         return paymentPeriodService.getPaymentPeriod(id);
+    }
+
+    @GetMapping("/available-for-employee/{employeeId}")
+    public List<PaymentPeriodResponse> getAvailablePeriodsForEmployee(
+            @PathVariable Long employeeId) {
+        return paymentPeriodService.getAvailablePeriodsForEmployee(employeeId);
     }
 }
