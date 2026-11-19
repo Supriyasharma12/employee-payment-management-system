@@ -129,7 +129,7 @@ public class PaymentBatchService {
      * Retrieve a batch only when its status is OPEN.
      * Payment creation must use this method.
      */
-    @Transactional(readOnly = true)
+    @Transactional
     public PaymentBatch getOpenBatchForPayment(Long batchId) {
 
         if (batchId == null || batchId <= 0) {
@@ -140,8 +140,14 @@ public class PaymentBatchService {
         }
 
 
-
-        PaymentBatch batch = getBatchById(batchId);
+        PaymentBatch batch = paymentBatchRepository
+                .findByIdForUpdate(batchId)
+                .orElseThrow(() ->
+                        new ResponseStatusException(
+                                HttpStatus.NOT_FOUND,
+                                "Payment batch not found."
+                        )
+                );
 
         if (!"OPEN".equals(batch.getStatus())) {
             throw new ResponseStatusException(
@@ -168,7 +174,11 @@ public class PaymentBatchService {
     @Transactional
     public PaymentBatch closeBatch(Long batchId) {
 
-        PaymentBatch batch = getBatchById(batchId);
+        PaymentBatch batch = paymentBatchRepository
+                .findByIdForUpdate(batchId)
+                .orElseThrow(() ->
+                        new IllegalArgumentException("Payment batch not found.")
+                );
 
         if ("CLOSED".equals(batch.getStatus())) {
             throw new ResponseStatusException(

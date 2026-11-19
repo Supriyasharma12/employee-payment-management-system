@@ -99,6 +99,8 @@ public class PaymentAdviceFinalizationService {
             );
         }
 
+
+
         // 4. Retrieve all approved payments for this batch and bank.
         // No payment-month filter is applied.
         List<Payment> payments = paymentRepository
@@ -111,6 +113,64 @@ public class PaymentAdviceFinalizationService {
             throw new IllegalStateException(
                     "No approved payments are available for this batch and bank."
             );
+        }
+
+        // Lock all selected payment rows before checking for duplicate advice.
+// This prevents simultaneous finalization from including the same payment.
+        // Lock all selected payment rows before checking for duplicate advice.
+        List<Long> paymentIds = payments.stream()
+                .map(Payment::getId)
+                .toList();
+
+        List<Payment> lockedPayments =
+                paymentRepository.findPaymentsByIdsForUpdate(paymentIds);
+
+// Ensure all selected payments were successfully retrieved and locked.
+        if (lockedPayments.size() != paymentIds.size()) {
+            throw new IllegalStateException(
+                    "One or more payments could not be retrieved for finalization."
+            );
+        }
+
+// Revalidate payment eligibility using the locked database records.
+        for (Payment payment : lockedPayments) {
+
+            if (!"APPROVED".equals(payment.getStatus())) {
+                throw new IllegalStateException(
+                        "Payment ID " + payment.getId()
+                                + " is no longer approved."
+                );
+            }
+
+            if (payment.getPaymentBatch() == null
+                    || !paymentBatchId.equals(payment.getPaymentBatch().getId())) {
+                throw new IllegalStateException(
+                        "Payment ID " + payment.getId()
+                                + " no longer belongs to the selected batch."
+                );
+            }
+
+            if (payment.getEmployee().getBank() == null
+                    || !bankId.equals(payment.getEmployee().getBank().getId())) {
+                throw new IllegalStateException(
+                        "Payment ID " + payment.getId()
+                                + " no longer belongs to the selected bank."
+                );
+            }
+        }
+
+        // 5. Prevent a payment from appearing in multiple active advices.
+        for (Payment payment : lockedPayments) {
+            boolean alreadyFinalized =
+                    paymentAdvicePaymentRepository
+                            .existsInFinalizedAdvice(payment.getId());
+
+            if (alreadyFinalized) {
+                throw new IllegalStateException(
+                        "Payment ID " + payment.getId()
+                                + " is already included in another finalized Payment Advice."
+                );
+            }
         }
 
         // 5. Generate the permanent reference number.
@@ -134,7 +194,7 @@ public class PaymentAdviceFinalizationService {
         List<PaymentAdvicePayment> advicePayments =
                 new ArrayList<>();
 
-        for (Payment payment : payments) {
+        for (Payment payment : lockedPayments) {
 
             PaymentAdvicePayment advicePayment =
                     new PaymentAdvicePayment();
@@ -173,7 +233,7 @@ public class PaymentAdviceFinalizationService {
 
         // 2. Find the original advice.
         PaymentAdvice advice = paymentAdviceRepository
-                .findById(adviceId)
+                .findByIdForUpdate(adviceId)
                 .orElseThrow(() ->
                         new IllegalArgumentException(
                                 "Payment Advice not found."

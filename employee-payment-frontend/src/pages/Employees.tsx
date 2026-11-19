@@ -311,154 +311,102 @@ const loadEmployees = useCallback(
     // SEARCH EMPLOYEES
     // =========================================================
 
-    const searchEmployees =
-        useCallback(
-            async (
-                value: string,
-                page = 0,
-                closeSuggestions = true,
-            ) => {
-                const normalizedValue =
-                    value.trim()
 
-                const requestId =
-                    ++searchRequestId.current
+    const searchEmployees = useCallback(
+        async (
+            value: string,
+            page = 0,
+            closeSuggestions = true,
+        ) => {
+            const normalizedValue = value.trim()
+            const requestId = ++searchRequestId.current
 
-                if (!normalizedValue) {
-                    setActiveSearch("")
-                    setSuggestions([])
-                    setShowSuggestions(false)
+            if (!normalizedValue) {
+                setActiveSearch("")
+                setSuggestions([])
+                setShowSuggestions(false)
 
-                    await loadEmployees(page)
+                await loadEmployees(page)
+                return
+            }
 
+            try {
+                setSearching(true)
+                setError("")
+
+                // Fetch suggestions by employee code and name.
+                const [codeResults, nameResults] =
+                    await Promise.allSettled([
+                        searchEmployeesByCode(normalizedValue),
+                        searchEmployeesByName(normalizedValue),
+                    ])
+
+                if (requestId !== searchRequestId.current) {
                     return
                 }
 
-                try {
-                    setSearching(true)
-                    setError("")
+                const codeData =
+                    codeResults.status === "fulfilled"
+                        ? codeResults.value
+                        : null
 
-                    const [
-                        codeResults,
-                        nameResults,
-                    ] =
-                        await Promise.allSettled([
-                            searchEmployeesByCode(
-                                normalizedValue,
-                            ),
-                            searchEmployeesByName(
-                                normalizedValue,
-                            ),
-                        ])
+                const nameData =
+                    nameResults.status === "fulfilled"
+                        ? nameResults.value
+                        : null
 
-                    if (
-                        requestId !==
-                        searchRequestId.current
-                    ) {
-                        return
-                    }
+                const combined = [
+                    ...(codeData?.content ?? []),
+                    ...(nameData?.content ?? []),
+                ].filter(
+                    (employee, index, array) =>
+                        array.findIndex(
+                            (item) => item.id === employee.id,
+                        ) === index,
+                )
 
-                    const codeData =
-                        codeResults.status ===
-                        "fulfilled"
-                            ? codeResults.value
-                            : null
+                setSuggestions(combined.slice(0, 6))
 
-                    const nameData =
-                        nameResults.status ===
-                        "fulfilled"
-                            ? nameResults.value
-                            : null
+                // IMPORTANT:
+                // Load the table using the same API that applies
+                // category, bank and search filters together.
+                const filteredData = await getEmployees(
+                    page,
+                    pageSize,
+                    categoryId,
+                    bankId,
+                    normalizedValue,
+                )
 
-                    const combined = [
-                        ...(codeData?.content ??
-                            []),
-                        ...(nameData?.content ??
-                            []),
-                    ].filter(
-                        (
-                            employee,
-                            index,
-                            array,
-                        ) =>
-                            array.findIndex(
-                                (item) =>
-                                    item.id ===
-                                    employee.id,
-                            ) === index,
-                    )
-
-                    setSuggestions(
-                        combined.slice(0, 6),
-                    )
-
-                    const result =
-                        codeData &&
-                        codeData.totalElements >
-                        0
-                            ? codeData
-                            : nameData
-
-                    if (!result) {
-                        setEmployees([])
-                        setCurrentPage(0)
-                        setTotalPages(0)
-                        setTotalElements(0)
-                    } else {
-                        setEmployees(
-                            result.content ??
-                            [],
-                        )
-
-                        setCurrentPage(
-                            result.number ??
-                            0,
-                        )
-
-                        setTotalPages(
-                            result.totalPages ??
-                            0,
-                        )
-
-                        setTotalElements(
-                            result.totalElements ??
-                            0,
-                        )
-
-                        setActiveSearch(
-                            normalizedValue,
-                        )
-                    }
-
-                    if (closeSuggestions) {
-                        setShowSuggestions(
-                            false,
-                        )
-                    }
-                } catch (err) {
-                    if (
-                        requestId !==
-                        searchRequestId.current
-                    ) {
-                        return
-                    }
-
-                    console.error(err)
-
-                    setError(
-                        "Search failed.",
-                    )
-                } finally {
-                    if (
-                        requestId ===
-                        searchRequestId.current
-                    ) {
-                        setSearching(false)
-                    }
+                if (requestId !== searchRequestId.current) {
+                    return
                 }
-            },
-            [loadEmployees],
-        )
+
+                setEmployees(filteredData.content ?? [])
+                setCurrentPage(filteredData.number ?? 0)
+                setTotalPages(filteredData.totalPages ?? 0)
+                setTotalElements(filteredData.totalElements ?? 0)
+                setActiveSearch(normalizedValue)
+
+                if (closeSuggestions) {
+                    setShowSuggestions(false)
+                }
+            } catch (err) {
+                if (requestId !== searchRequestId.current) {
+                    return
+                }
+
+                console.error("Employee search failed:", err)
+                setError("Search failed.")
+            } finally {
+                if (requestId === searchRequestId.current) {
+                    setSearching(false)
+                }
+            }
+        },
+        [loadEmployees, categoryId, bankId, pageSize],
+    )
+
 
     // =========================================================
     // SEARCH INPUT DEBOUNCE

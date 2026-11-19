@@ -6,6 +6,8 @@ import org.springframework.data.domain.Pageable;
 import org.springframework.data.jpa.repository.JpaRepository;
 import org.springframework.data.jpa.repository.Query;
 import org.springframework.data.repository.query.Param;
+import jakarta.persistence.LockModeType;
+import org.springframework.data.jpa.repository.Lock;
 
 import java.time.LocalDate;
 import java.util.List;
@@ -70,5 +72,38 @@ public interface PaymentRepository
     List<Payment> findApprovedPaymentsForAdvice(
             @Param("paymentBatchId") Long paymentBatchId,
             @Param("bankId") Long bankId
+    );
+
+    // Lock selected payment rows to prevent simultaneous advice finalization.
+    @Lock(LockModeType.PESSIMISTIC_WRITE)
+    @Query("""
+        SELECT p
+        FROM Payment p
+        WHERE p.id IN :paymentIds
+        ORDER BY p.id ASC
+        """)
+    List<Payment> findPaymentsByIdsForUpdate(
+            @Param("paymentIds") List<Long> paymentIds
+    );
+
+    // Lock an individual payment before approval, cancellation, or modification.
+    @Lock(LockModeType.PESSIMISTIC_WRITE)
+    @Query("""
+    SELECT p
+    FROM Payment p
+    WHERE p.id = :paymentId
+    """)
+    Optional<Payment> findByIdForUpdate(
+            @Param("paymentId") Long paymentId
+    );
+
+
+    @Query("""
+    SELECT p.paymentBatch.id
+    FROM Payment p
+    WHERE p.id = :paymentId
+    """)
+    Optional<Long> findPaymentBatchIdByPaymentId(
+            @Param("paymentId") Long paymentId
     );
 }

@@ -936,33 +936,54 @@ export default function Payments() {
         }
     }
 
+
     const loadOpenPaymentBatches = useCallback(async () => {
         try {
             setLoadingPaymentBatches(true)
-            const batches = await getOpenPaymentBatches()
-            setPaymentBatches(batches)
 
+            const batches = await getOpenPaymentBatches()
+
+            // Show the newest batch month first.
+            const sortedBatches = [...batches].sort((a, b) =>
+                (b.batchMonth ?? "").localeCompare(a.batchMonth ?? "")
+            )
+
+            setPaymentBatches(sortedBatches)
+
+            // Preserve the user's selection if it is still OPEN.
+            // Otherwise, automatically select the latest OPEN batch.
             setSelectedPaymentBatchId((current) => {
-                if (current && batches.some(
-                    (batch) => String(batch.id) === current,
-                )) {
+                const currentBatchStillOpen = sortedBatches.some(
+                    (batch) =>
+                        String(batch.id) === current &&
+                        batch.status?.toUpperCase() === "OPEN"
+                )
+
+                if (currentBatchStillOpen) {
                     return current
                 }
 
-                return ""
+                const latestOpenBatch = sortedBatches.find(
+                    (batch) => batch.status?.toUpperCase() === "OPEN"
+                )
+
+                return latestOpenBatch
+                    ? String(latestOpenBatch.id)
+                    : ""
             })
         } catch (error) {
             console.error(error)
             setErrorMessage(
                 getApiErrorMessage(
                     error,
-                    "Failed to load open payment batches.",
-                ),
+                    "Failed to load open payment batches."
+                )
             )
         } finally {
             setLoadingPaymentBatches(false)
         }
     }, [])
+
 
     const loadBatchHistory = useCallback(async () => {
         try {
@@ -1683,7 +1704,9 @@ export default function Payments() {
                                             saving
                                         }
                                         onClick={() => {
-                                            setSelectedMonthToCreate(monthValue)
+                                            setSelectedMonthToCreate((current) =>
+                                                current === monthValue ? "" : monthValue
+                                            )
                                             setErrorMessage("")
                                             setSuccessMessage("")
                                         }}

@@ -5,20 +5,22 @@ export interface PaymentAdvice {
     paymentId: number
     employeeCode: string
     employeeName: string
-    panNumber: string
-    bankName: string | null
+    bankName: string
     accountNumber: string
+    panNumber: string
     ifscCode: string
     categoryName: string
-
-    // Representative month/year for backward compatibility.
     month: number
     year: number
-
-    taMonthsCovered?: string
-
     netPayment: number
     status: string
+
+    monthlyDetails?: {
+        month: number
+        year: number
+        netPayment: number
+        status: string
+    }[]
 }
 
 export interface PaymentAdvicePage {

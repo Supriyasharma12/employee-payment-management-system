@@ -93,6 +93,36 @@ public class PaymentService {
         this.paymentBatchService = paymentBatchService;
     }
 
+    private Payment findPaymentAndLockBatch(Long paymentId) {
+
+        // Read only the batch ID. Do not load the Payment entity yet.
+        Long batchId = paymentRepository
+                .findPaymentBatchIdByPaymentId(paymentId)
+                .orElseThrow(() -> new IllegalStateException(
+                        "Payment not found or not associated with a payment batch: "
+                                + paymentId
+                ));
+
+        // Lock the batch first.
+        PaymentBatch lockedBatch =
+                paymentBatchService.getOpenBatchForPayment(batchId);
+
+        // Now load and lock the payment.
+        // It has not previously been loaded into this transaction's persistence context.
+        Payment payment = paymentRepository.findByIdForUpdate(paymentId)
+                .orElseThrow(() -> new IllegalArgumentException(
+                        "Payment not found with id: " + paymentId));
+
+        // Verify the batch association.
+        if (payment.getPaymentBatch() == null
+                || !payment.getPaymentBatch().getId().equals(lockedBatch.getId())) {
+            throw new IllegalStateException(
+                    "Payment batch association changed. Please retry the operation.");
+        }
+
+        return payment;
+    }
+
     // ============================================================
     // CREATE PAYMENT
     // ============================================================
@@ -121,16 +151,16 @@ public class PaymentService {
                         );
         validateEmployeePaymentMonth(employee, paymentPeriod);
 
-        if (paymentRepository
-                .existsByEmployeeIdAndPaymentPeriodId(
-                        request.employeeId(),
-                        request.paymentPeriodId()
-                )) {
-
-            throw new IllegalArgumentException(
-                    "Payment already exists for this employee and payment period"
-            );
-        }
+//        if (paymentRepository
+//                .existsByEmployeeIdAndPaymentPeriodId(
+//                        request.employeeId(),
+//                        request.paymentPeriodId()
+//                )) {
+//
+//            throw new IllegalArgumentException(
+//                    "Payment already exists for this employee and payment period"
+//            );
+//        }
 
         PaymentCalculationResponse calculation =
                 calculatePayment(
@@ -513,23 +543,23 @@ public class PaymentService {
     // UPDATE EXISTING MULTI-MONTH DRAFT
     // ============================================================
 
+
+
     @Transactional
     public MultiMonthPaymentCreateResponse updateMultiMonthPayment(
             Long paymentId,
             MultiMonthPaymentUpdateRequest request
     ) {
-        Payment payment = paymentRepository.findById(paymentId)
-                .orElseThrow(() -> new IllegalArgumentException(
-                        "Payment not found with id: " + paymentId));
+        Payment payment = findPaymentAndLockBatch(paymentId);
 
         if (!"DRAFT".equalsIgnoreCase(payment.getStatus())) {
             throw new IllegalStateException(
                     "Only DRAFT payments can be edited.");
         }
 
-        paymentBatchService.validatePaymentBatchIsOpen(
-                payment.getPaymentBatch()
-        );
+//        paymentBatchService.validatePaymentBatchIsOpen(
+//                payment.getPaymentBatch()
+//        );
 
         if (payment.getPaymentPeriod() != null) {
             throw new IllegalArgumentException(
@@ -542,19 +572,7 @@ public class PaymentService {
         if (request.monthlyDetails() == null ||
                 request.monthlyDetails().isEmpty()) {
             throw new IllegalArgumentException(
-                    "At least one payment month must be selected."
-            );
-        }
-
-        for (PaymentMonthlyDetailRequest detail : request.monthlyDetails()) {
-            PaymentPeriod period = paymentPeriodRepository
-                    .findById(detail.paymentPeriodId())
-                    .orElseThrow(() -> new IllegalArgumentException(
-                            "Payment period not found: "
-                                    + detail.paymentPeriodId()
-                    ));
-
-            validateEmployeePaymentMonth(employee, period);
+                    "At least one payment month must be selected.");
         }
 
         List<PaymentMonthlyDetailRequest> requestedDetails =
@@ -567,6 +585,16 @@ public class PaymentService {
                 throw new IllegalArgumentException(
                         "A payment cannot contain the same month more than once.");
             }
+        }
+
+        for (PaymentMonthlyDetailRequest detail : requestedDetails) {
+            PaymentPeriod period = paymentPeriodRepository
+                    .findById(detail.paymentPeriodId())
+                    .orElseThrow(() -> new IllegalArgumentException(
+                            "Payment period not found: "
+                                    + detail.paymentPeriodId()));
+
+            validateEmployeePaymentMonth(employee, period);
         }
 
         List<PaymentMonthlyDetail> existingDetails =
@@ -589,8 +617,7 @@ public class PaymentService {
         Set<Long> removedPeriodIds = new HashSet<>(existingPeriodIds);
         removedPeriodIds.removeAll(requestedPeriodIds);
 
-        // Check only newly added months. Existing months are already
-        // reserved by this payment and must not conflict with themselves.
+        // Check only newly added months.
         if (!addedPeriodIds.isEmpty()) {
             List<PaymentMonthReservationService.MonthAvailability>
                     availability = reservationService.checkMonthAvailability(
@@ -610,7 +637,7 @@ public class PaymentService {
         }
 
         Map<Long, PaymentMonthlyDetail> existingByPeriodId =
-                new HashMap<Long, PaymentMonthlyDetail>();
+                new HashMap<>();
 
         for (PaymentMonthlyDetail detail : existingDetails) {
             existingByPeriodId.put(
@@ -632,7 +659,7 @@ public class PaymentService {
         List<MultiMonthPaymentCreateResponse.MonthlyPaymentResult>
                 results = new ArrayList<>();
 
-        // Update existing detail rows and create rows for newly added months.
+        // Update existing details and create newly added details.
         for (PaymentMonthlyDetailRequest detailRequest : requestedDetails) {
             PaymentMonthlyDetail detail =
                     existingByPeriodId.get(detailRequest.paymentPeriodId());
@@ -689,7 +716,7 @@ public class PaymentService {
 
         validateNetPayment(net);
 
-        // Remove detail rows for months no longer selected.
+        // Remove monthly details for months no longer selected.
         List<PaymentMonthlyDetail> removedDetails = existingDetails.stream()
                 .filter(detail -> removedPeriodIds.contains(
                         detail.getPaymentPeriod().getId()))
@@ -703,7 +730,7 @@ public class PaymentService {
         // Release only this draft's reservations for removed months.
         if (!removedPeriodIds.isEmpty()) {
             List<PaymentMonthReservation> reservations =
-                    reservationRepository.findByPaymentIdAndStatus(
+                    reservationRepository.findByPaymentIdAndStatusForUpdate(
                             paymentId, "RESERVED");
 
             java.time.LocalDateTime now = java.time.LocalDateTime.now();
@@ -719,10 +746,10 @@ public class PaymentService {
             reservationRepository.saveAll(reservations);
         }
 
-        // Persist updated and newly created monthly details.
+        // Save updated and newly created monthly details.
         monthlyDetailRepository.saveAllAndFlush(updatedDetails);
 
-        // Reserve newly added months for this same payment.
+        // Reserve newly added months.
         if (!addedPeriodIds.isEmpty()) {
             reservationService.reserveMonths(
                     employee.getId(),
@@ -730,6 +757,7 @@ public class PaymentService {
                     new ArrayList<>(addedPeriodIds));
         }
 
+        // Recalculate parent payment totals.
         payment.setPaymentDate(request.paymentDate());
         payment.setRunningTa(runningTa);
         payment.setFixedTa(fixedTa);
@@ -826,14 +854,16 @@ public class PaymentService {
             PaymentUpdateRequest request
     ) {
 
-        Payment payment =
-                paymentRepository.findById(paymentId)
-                        .orElseThrow(() ->
-                                new IllegalArgumentException(
-                                        "Payment not found with id: "
-                                                + paymentId
-                                )
-                        );
+//        Payment payment =
+//                paymentRepository.findByIdForUpdate(paymentId)
+//                        .orElseThrow(() ->
+//                                new IllegalArgumentException(
+//                                        "Payment not found with id: "
+//                                                + paymentId
+//                                )
+//                        );
+
+        Payment payment = findPaymentAndLockBatch(paymentId);
 
         if (!"DRAFT".equalsIgnoreCase(
                 payment.getStatus()
@@ -905,9 +935,9 @@ public class PaymentService {
                 calculation.netPayment()
         );
 
-        paymentBatchService.validatePaymentBatchIsOpen(
-                payment.getPaymentBatch()
-        );
+//        paymentBatchService.validatePaymentBatchIsOpen(
+//                payment.getPaymentBatch()
+//        );
 
         // Remains DRAFT after editing.
         payment.setStatus("DRAFT");
@@ -1013,10 +1043,12 @@ public class PaymentService {
     @Transactional
     public PaymentResponse approvePayment(Long paymentId) {
 
-        Payment payment = paymentRepository.findById(paymentId)
-                .orElseThrow(() ->
-                        new IllegalArgumentException(
-                                "Payment not found with id: " + paymentId));
+//        Payment payment = paymentRepository.findByIdForUpdate(paymentId)
+//                .orElseThrow(() ->
+//                        new IllegalArgumentException(
+//                                "Payment not found with id: " + paymentId));
+
+        Payment payment = findPaymentAndLockBatch(paymentId);
 
         if (!"DRAFT".equalsIgnoreCase(payment.getStatus())) {
             throw new IllegalStateException(
@@ -1033,7 +1065,7 @@ public class PaymentService {
 
         // Mark reservations as PAID only when this payment has reservations.
         List<PaymentMonthReservation> reservations =
-                reservationRepository.findByPaymentIdAndStatus(
+                reservationRepository.findByPaymentIdAndStatusForUpdate(
                         paymentId, "RESERVED");
 
         if (!reservations.isEmpty()) {
@@ -1090,10 +1122,13 @@ public class PaymentService {
     @Transactional
     public void cancelDraftPayment(Long paymentId) {
 
-        Payment payment = paymentRepository.findById(paymentId)
-                .orElseThrow(() ->
-                        new IllegalArgumentException(
-                                "Payment not found with id: " + paymentId));
+//        Payment payment = paymentRepository.findByIdForUpdate(paymentId)
+//                .orElseThrow(() ->
+//                        new IllegalArgumentException(
+//                                "Payment not found with id: " + paymentId));
+
+
+        Payment payment = findPaymentAndLockBatch(paymentId);
 
         if (!"DRAFT".equalsIgnoreCase(payment.getStatus())) {
             throw new IllegalStateException(
@@ -1711,10 +1746,12 @@ public class PaymentService {
                                 Collectors.toList()
                         ));
 
+
         List<PaymentAdviceResponse> aggregatedAdvice =
                 paymentsByEmployee.values()
                         .stream()
                         .map(employeePayments -> {
+
                             Payment representative = employeePayments.get(0);
                             Employee employee = representative.getEmployee();
 
@@ -1732,6 +1769,41 @@ public class PaymentService {
                                     .filter(Objects::nonNull)
                                     .reduce(BigDecimal.ZERO, BigDecimal::add);
 
+                            List<PaymentAdviceResponse.MonthlyDetailResponse>
+                                    monthlyDetails = employeePayments.stream()
+                                    .flatMap(payment ->
+                                            monthlyDetailRepository
+                                                    .findByPaymentId(payment.getId())
+                                                    .stream()
+                                    )
+                                    .filter(detail ->
+                                            detail.getPaymentPeriod() != null)
+                                    .filter(detail ->
+                                            paymentPeriodId == null
+                                                    || detail.getPaymentPeriod()
+                                                    .getId()
+                                                    .equals(paymentPeriodId)
+                                    )
+                                    .sorted(Comparator
+                                            .comparing(
+                                                    (PaymentMonthlyDetail detail) ->
+                                                            detail.getPaymentPeriod().getYear()
+                                            )
+                                            .thenComparing(
+                                                    detail ->
+                                                            detail.getPaymentPeriod().getMonth()
+                                            )
+                                    )
+                                    .map(detail ->
+                                            new PaymentAdviceResponse.MonthlyDetailResponse(
+                                                    detail.getPaymentPeriod().getMonth(),
+                                                    detail.getPaymentPeriod().getYear(),
+                                                    detail.getNetPayment(),
+                                                    representative.getStatus()
+                                            )
+                                    )
+                                    .toList();
+
                             PaymentPeriod period =
                                     getAdvicePeriod(representative, paymentPeriodId);
 
@@ -1747,10 +1819,12 @@ public class PaymentService {
                                     period != null ? period.getMonth() : null,
                                     period != null ? period.getYear() : null,
                                     totalNetPayment,
-                                    "APPROVED"
+                                    "APPROVED",
+                                    monthlyDetails
                             );
                         })
                         .toList();
+
 
 
         int start = pageable.isPaged()

@@ -207,7 +207,19 @@ useEffect(() => {
         // so a batch-loading failure does not affect other filters.
         try {
             const batches = await getPaymentAdviceBatches()
+
             setPaymentBatches(batches)
+
+// Automatically select the latest OPEN batch on page opening.
+            const currentBatch = batches.find(
+                (batch) => batch.status?.toUpperCase() === "OPEN"
+            )
+
+            if (currentBatch) {
+                setPaymentBatchId((currentId) =>
+                    currentId || String(currentBatch.id)
+                )
+            }
         } catch (batchError) {
             console.error(
                 "Failed to load payment batches.",
@@ -1960,43 +1972,41 @@ const handleExport = async () => {
 
                                 {/* MAIN EMPLOYEE TABLE */}
 
-                                <div className="overflow-x-auto rounded-xl border border-slate-100">
+                                <div className="w-full overflow-hidden rounded-xl border border-slate-100">
 
-                                    <table className="w-full min-w-[1300px] text-sm">
+                                    <table className="w-full table-fixed text-sm">
 
                                         <thead>
                                         <tr className="bg-slate-50 text-slate-500">
+                                            <th className="w-[3%] px-2 py-3"></th>
 
-                                            <th className="w-10 px-3 py-3.5"></th>
-
-                                            <th className="px-4 py-3.5 text-left text-xs font-semibold uppercase tracking-wide">
+                                            <th className="w-[20%] px-2 py-3 text-left text-xs font-semibold uppercase tracking-wide">
                                                 Employee
                                             </th>
 
-                                            <th className="px-4 py-3.5 text-left text-xs font-semibold uppercase tracking-wide">
+                                            <th className="w-[9%] px-2 py-3 text-left text-xs font-semibold uppercase tracking-wide">
                                                 PAN
                                             </th>
 
-                                            <th className="px-4 py-3.5 text-left text-xs font-semibold uppercase tracking-wide">
+                                            <th className="w-[17%] px-2 py-3 text-left text-xs font-semibold uppercase tracking-wide">
                                                 Bank Name
                                             </th>
 
-                                            <th className="px-4 py-3.5 text-left text-xs font-semibold uppercase tracking-wide">
+                                            <th className="w-[17%] px-2 py-3 text-left text-xs font-semibold uppercase tracking-wide">
                                                 Account Number
                                             </th>
 
-                                            <th className="px-4 py-3.5 text-left text-xs font-semibold uppercase tracking-wide">
+                                            <th className="w-[13%] px-2 py-3 text-left text-xs font-semibold uppercase tracking-wide">
                                                 IFSC
                                             </th>
 
-                                            <th className="px-4 py-3.5 text-center text-xs font-semibold uppercase tracking-wide">
+                                            <th className="w-[10%] px-2 py-3 text-center text-xs font-semibold uppercase tracking-wide">
                                                 Payment Records
                                             </th>
 
-                                            <th className="px-4 py-3.5 text-right text-xs font-semibold uppercase tracking-wide">
+                                            <th className="w-[11%] px-2 py-3 text-right text-xs font-semibold uppercase tracking-wide">
                                                 Total Net Payment
                                             </th>
-
                                         </tr>
                                         </thead>
 
@@ -2007,6 +2017,29 @@ const handleExport = async () => {
 
                                             const isExpanded =
                                                 expandedEmployees.has(group.key)
+
+                                            // Build the individual monthly rows from backend details.
+                                            // Keep a fallback for older V1 responses.
+                                            const monthlyRows = group.payments.flatMap((payment) => {
+
+                                                if (payment.monthlyDetails?.length) {
+                                                    return payment.monthlyDetails.map((detail) => ({
+                                                        key: `${payment.paymentId}-${detail.month}-${detail.year}`,
+                                                        month: detail.month,
+                                                        year: detail.year,
+                                                        netPayment: detail.netPayment,
+                                                        status: detail.status || payment.status,
+                                                    }))
+                                                }
+
+                                                return [{
+                                                    key: String(payment.paymentId),
+                                                    month: payment.month,
+                                                    year: payment.year,
+                                                    netPayment: payment.netPayment,
+                                                    status: payment.status,
+                                                }]
+                                            })
 
                                             return (
 
@@ -2094,7 +2127,7 @@ const handleExport = async () => {
                                                         <td className="px-4 py-4 text-center">
 
                                                 <span className="rounded-full bg-emerald-50 px-2.5 py-1 text-xs font-semibold text-emerald-700">
-                                                    {group.payments.length}
+                                                   {monthlyRows.length}
                                                 </span>
 
                                                         </td>
@@ -2102,7 +2135,7 @@ const handleExport = async () => {
 
                                                         {/* TOTAL NET PAYMENT */}
 
-                                                        <td className="px-4 py-4 text-right">
+                                                        <td className="px-2 py-3 text-right">
 
                                                 <span className="inline-flex rounded-lg bg-emerald-50 px-3 py-2 font-bold tabular-nums text-emerald-700">
                                                     {formatCurrency(group.totalNetPayment)}
@@ -2119,7 +2152,7 @@ const handleExport = async () => {
 
                                                         <tr className="border-t border-slate-100 bg-slate-50/70">
 
-                                                            <td colSpan={8} className="px-4 py-4 md:px-8">
+                                                            <td colSpan={8} className="px-2 py-3 md:px-8">
 
                                                                 <div className="mb-3 flex flex-wrap items-center justify-between gap-2">
 
@@ -2136,87 +2169,55 @@ const handleExport = async () => {
                                                                     </div>
 
                                                                     <span className="text-xs text-slate-500">
-                                                            {group.payments.length} payment record(s)
+                                                           {monthlyRows.length} month(s)
                                                         </span>
 
                                                                 </div>
 
 
-                                                                {/* MONTHLY TABLE — SUMMARY STYLE */}
+                                                                {/* MONTHLY TABLE */}
 
-                                                                <div className="overflow-x-auto rounded-lg border border-slate-200 bg-white">
-
-                                                                    <table className="w-full min-w-[900px] text-xs">
-
+                                                                <div className="w-full overflow-hidden rounded-lg border border-slate-200 bg-white">
+                                                                    <table className="w-full table-fixed text-xs">
                                                                         <thead>
-
                                                                         <tr className="bg-white text-slate-500">
-
-                                                                            <th className="px-3 py-3 text-left font-semibold uppercase tracking-wide">
-                                                                                Payment Period
-                                                                            </th>
-
-                                                                            <th className="px-3 py-3 text-left font-semibold uppercase tracking-wide">
+                                                                            <th className="w-[50%] px-3 py-3 text-left font-semibold uppercase tracking-wide">
                                                                                 TA Months Covered
                                                                             </th>
 
-                                                                            <th className="px-3 py-3 text-right font-semibold uppercase tracking-wide">
+                                                                            <th className="w-[27%] px-3 py-3 pr-8 text-right font-semibold uppercase tracking-wide">
                                                                                 Net Payment
                                                                             </th>
 
-                                                                            <th className="payment-advice-print-hide px-3 py-3 text-left font-semibold uppercase tracking-wide">
+                                                                            <th className="w-[23%] px-3 py-3 pl-10 text-left font-semibold uppercase tracking-wide payment-advice-print-hide">
                                                                                 Status
                                                                             </th>
-
                                                                         </tr>
-
                                                                         </thead>
 
-
                                                                         <tbody>
-
-                                                                        {group.payments.map((payment) => (
-
+                                                                        {monthlyRows.map((detail) => (
                                                                             <tr
-                                                                                key={payment.paymentId}
+                                                                                key={detail.key}
                                                                                 className="border-t border-slate-100 transition-colors hover:bg-slate-50"
                                                                             >
-
-                                                                                <td className="whitespace-nowrap px-3 py-3 font-medium text-slate-700">
-                                                                                    {formatPeriod(
-                                                                                        payment.month,
-                                                                                        payment.year
-                                                                                    )}
-                                                                                </td>
-
                                                                                 <td className="whitespace-nowrap px-3 py-3 text-slate-600">
-                                                                                    {payment.taMonthsCovered ||
-                                                                                        formatPeriod(
-                                                                                            payment.month,
-                                                                                            payment.year
-                                                                                        )}
+                                                                                    {formatPeriod(detail.month, detail.year)}
                                                                                 </td>
 
-                                                                                <td className="whitespace-nowrap px-3 py-3 text-right font-semibold tabular-nums text-emerald-700">
-                                                                                    {formatCurrency(payment.netPayment)}
+                                                                                <td className="whitespace-nowrap px-3 py-3 pr-8 text-right font-semibold tabular-nums text-emerald-700">
+                                                                                    {formatCurrency(detail.netPayment)}
                                                                                 </td>
 
-                                                                                <td className="payment-advice-print-hide px-3 py-3">
-
-                                                                            <span className="inline-flex rounded-full bg-emerald-50 px-2 py-1 text-[10px] font-semibold text-emerald-700">
-                                                                                {payment.status}
-                                                                            </span>
-
+                                                                                <td className="payment-advice-print-hide whitespace-nowrap px-3 py-3 pl-10">
+                <span className="inline-flex rounded-full bg-emerald-50 px-2 py-1 text-[10px] font-semibold text-emerald-700">
+                    {detail.status}
+                </span>
                                                                                 </td>
-
                                                                             </tr>
-
                                                                         ))}
-
                                                                         </tbody>
-
                                                                     </table>
-
                                                                 </div>
 
                                                             </td>

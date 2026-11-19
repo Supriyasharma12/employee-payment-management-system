@@ -238,7 +238,19 @@ export default function PaymentSummary() {
             }
             try {
                 const batches = await getPaymentAdviceBatches()
+
                 setPaymentBatches(batches)
+
+// Automatically select the latest OPEN batch on page opening.
+                const currentBatch = batches.find(
+                    (batch) => batch.status?.toUpperCase() === "OPEN"
+                )
+
+                if (currentBatch) {
+                    setPaymentBatchId((currentId) =>
+                        currentId || String(currentBatch.id)
+                    )
+                }
             } catch (batchError) {
                 console.error("Failed to load payment batches.", batchError)
                 setPaymentBatches([])

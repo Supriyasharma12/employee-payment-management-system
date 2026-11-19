@@ -165,7 +165,7 @@ public class PaymentMonthReservationService {
     public void releaseDraftReservations(Long paymentId) {
 
         List<PaymentMonthReservation> reservations =
-                reservationRepository.findByPaymentIdAndStatus(
+                reservationRepository.findByPaymentIdAndStatusForUpdate(
                         paymentId, "RESERVED");
 
         LocalDateTime now = LocalDateTime.now();
@@ -185,7 +185,7 @@ public class PaymentMonthReservationService {
     public void markReservationsPaid(Long paymentId) {
 
         List<PaymentMonthReservation> reservations =
-                reservationRepository.findByPaymentIdAndStatus(
+                reservationRepository.findByPaymentIdAndStatusForUpdate(
                         paymentId, "RESERVED");
 
         if (reservations.isEmpty()) {

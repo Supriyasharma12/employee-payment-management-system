@@ -21,6 +21,20 @@ public interface PaymentMonthReservationRepository
             String status
     );
 
+    // Lock reservations belonging to a payment before changing their status.
+    @Lock(LockModeType.PESSIMISTIC_WRITE)
+    @Query("""
+    SELECT r
+    FROM PaymentMonthReservation r
+    WHERE r.payment.id = :paymentId
+      AND r.status = :status
+    ORDER BY r.id ASC
+    """)
+    List<PaymentMonthReservation> findByPaymentIdAndStatusForUpdate(
+            @Param("paymentId") Long paymentId,
+            @Param("status") String status
+    );
+
     List<PaymentMonthReservation> findByEmployeeIdAndPaymentPeriodId(
             Long employeeId,
             Long paymentPeriodId

@@ -31,7 +31,7 @@ import com.employee.payment.payment.entity.PaymentAdvice;
 import com.employee.payment.payment.service.PaymentAdviceFinalizationService;
 import com.employee.payment.payment.repository.PaymentAdvicePaymentRepository;
 import com.employee.payment.payment.dto.PaymentAdviceFinalizedResponse;
-import com.employee.payment.payment.dto.PaymentAdviceFinalizedResponse;
+
 
 @RestController
 @RequestMapping("/api/payments")
@@ -235,8 +235,8 @@ public class PaymentController {
         return paymentService.getPaymentSummary(
                 paymentPeriodId,
                 employeeId,
-                bankId,
                 categoryId,
+                bankId,
                 employeeCode,
                 employeeName,
                 paymentBatchId,
