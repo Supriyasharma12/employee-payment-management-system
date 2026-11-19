@@ -113,7 +113,8 @@ public class SecurityConfig {
         configuration.setAllowedOrigins(
                 List.of(
                         "http://localhost:5173",
-                        "https://employee-payment-frontend.onrender.com"
+                        "https://employee-payment-frontend.onrender.com",
+                        "https://employee-payment-frontend-v2.onrender.com"
                 )
         );
 
